@@ -3,54 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <title>同意書管理</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link rel="manifest" href="manifest.json">
 
 <style>
-
-body{
-font-family:sans-serif;
-max-width:600px;
-margin:auto;
-padding:20px;
-}
-
-h1{
-text-align:center;
-}
-
-input[type="text"],input[type="date"]{
-width:100%;
-padding:10px;
-margin-top:5px;
-}
-
-.checkbox{
-display:flex;
-gap:10px;
-margin-top:10px;
-}
-
-button{
-width:100%;
-padding:12px;
-margin-top:10px;
-background:#4CAF50;
-color:white;
-border:none;
-border-radius:5px;
-}
-
-.card{
-border:1px solid #ddd;
-padding:10px;
-margin-top:10px;
-border-radius:10px;
-}
-
-.green{background:#e8f5e9;}
-.yellow{background:#fff9c4;}
-.orange{background:#ffe0b2;}
-.red{background:#ffcdd2;}
-
+body{font-family:sans-serif;max-width:720px;margin:auto;padding:20px}
+h1{text-align:center}
+input,textarea{width:100%;padding:10px;margin-top:5px;box-sizing:border-box}
+textarea{min-height:60px}
+.checkbox{display:flex;gap:10px;margin-top:10px}
+button{width:100%;padding:12px;margin-top:10px;background:#4CAF50;color:#fff;border:none;border-radius:6px}
+.card{border:1px solid #ddd;padding:12px;margin-top:10px;border-radius:10px}
+.green{background:#e8f5e9}
+.yellow{background:#fff9c4}
+.orange{background:#ffe0b2}
+.red{background:#ffcdd2}
+.small{font-size:0.9em;color:#444}
 </style>
 </head>
 
@@ -79,15 +48,23 @@ border-radius:10px;
 <span>変形徒手</span>
 </div>
 
-<button onclick="addPatient()">登録</button>
+<label>通知日数</label>
+<input type="number" id="alertDays" value="30">
+
+<label>更新予定日</label>
+<input type="date" id="planDate">
+
+<label>メモ</label>
+<textarea id="memo"></textarea>
+
+<button onclick="savePatient()">保存</button>
 
 <h3>患者一覧</h3>
-
 <div id="list"></div>
 
 <script>
 
-let patients=JSON.parse(localStorage.getItem("patients")||"[]")
+let patients = JSON.parse(localStorage.getItem("patients")||"[]")
 
 function endOfMonth(date){
 return new Date(date.getFullYear(),date.getMonth()+1,0)
@@ -110,14 +87,8 @@ base=consentDate
 }else{
 if(firstDate){
 let diff=(firstDate-consentDate)/(1000*60*60*24)
-if(diff>30){
-base=consentDate
-}else{
-base=firstDate
-}
-}else{
-base=consentDate
-}
+if(diff>30){base=consentDate}else{base=firstDate}
+}else{base=consentDate}
 }
 
 let expiry
@@ -136,82 +107,80 @@ expiry=endOfMonth(addMonths(base,6))
 }
 
 return expiry
-
 }
 
 function daysLeft(date){
-
 let today=new Date()
+today.setHours(0,0,0,0)
 let diff=(date-today)/(1000*60*60*24)
-
 return Math.floor(diff)
-
 }
 
 function getColor(days){
-
 if(days<0)return "red"
 if(days<=30)return "orange"
 if(days<=60)return "yellow"
 return "green"
-
 }
 
-function addPatient(){
+function savePatient(){
 
 let name=document.getElementById("name").value
 let consent=document.getElementById("consent").value
 let first=document.getElementById("first").value
 let renewal=document.getElementById("renewal").checked
 let deform=document.getElementById("deform").checked
+let alertDays=parseInt(document.getElementById("alertDays").value)||30
+let memo=document.getElementById("memo").value
+let planDate=document.getElementById("planDate").value
 
 if(!name||!consent){
 alert("患者名と同意日を入力")
 return
 }
 
-patients.push({
-name,consent,first,renewal,deform
-})
+patients.push({name,consent,first,renewal,deform,alertDays,memo,planDate})
 
 localStorage.setItem("patients",JSON.stringify(patients))
 
 render()
+}
 
+function deletePatient(i){
+
+patients.splice(i,1)
+
+localStorage.setItem("patients",JSON.stringify(patients))
+
+render()
 }
 
 function render(){
 
 let list=document.getElementById("list")
 
-let data=patients.map(p=>{
-
-let expiry=calculateExpiry(p.consent,p.first,p.renewal,p.deform)
-let days=daysLeft(expiry)
-
-return {...p,expiry,days}
-
-})
-
-data.sort((a,b)=>a.expiry-b.expiry)
-
 list.innerHTML=""
 
-data.forEach(p=>{
+patients.forEach((p,i)=>{
 
-let color=getColor(p.days)
+let expiry=calculateExpiry(p.consent,p.first,p.renewal,p.deform)
+
+let days=daysLeft(expiry)
+
+let color=getColor(days)
 
 let card=document.createElement("div")
 
 card.className="card "+color
 
-let month=p.expiry.getMonth()+1
-
 card.innerHTML=`
 <b>${p.name}</b><br>
-期限 ${p.expiry.toLocaleDateString()}<br>
-残り ${p.days}日<br>
-更新月 ${month}月
+期限 ${expiry.toLocaleDateString()}<br>
+残り ${days}日<br>
+${p.planDate ? "更新予定 "+p.planDate+"<br>" : ""}
+${p.memo ? "<div class='small'>メモ: "+p.memo+"</div>" : ""}
+<br>
+<button onclick="deletePatient(${i})">削除</button>
 `
 
 list.appendChild(card)
@@ -222,6 +191,12 @@ list.appendChild(card)
 
 render()
 
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+navigator.serviceWorker.register('sw.js')
+}
 </script>
 
 </body>
