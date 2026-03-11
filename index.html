@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>同意書期限チェッカー</title>
+
+<style>
+
+body{
+font-family:sans-serif;
+max-width:500px;
+margin:auto;
+padding:20px;
+}
+
+input,button{
+width:100%;
+padding:10px;
+margin:5px 0;
+font-size:16px;
+}
+
+.result{
+margin-top:20px;
+padding:15px;
+background:#f2f2f2;
+border-radius:10px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h2>訪問マッサージ 同意書期限チェッカー</h2>
+
+<label>同意日</label>
+<input type="date" id="consentDate">
+
+<label>初療日（初回のみ）</label>
+<input type="date" id="firstVisitDate">
+
+<label>
+<input type="checkbox" id="isRenewal">
+再同意
+</label>
+
+<label>
+<input type="checkbox" id="isDeform">
+変形徒手矯正
+</label>
+
+<button onclick="calculate()">期限計算</button>
+
+<div class="result" id="result"></div>
+
+<script>
+
+function endOfMonth(date){
+
+return new Date(date.getFullYear(), date.getMonth()+1,0)
+
+}
+
+function addMonths(date,months){
+
+let d=new Date(date)
+
+d.setMonth(d.getMonth()+months)
+
+return d
+
+}
+
+function calculate(){
+
+let consent=document.getElementById("consentDate").value
+let firstVisit=document.getElementById("firstVisitDate").value
+let renewal=document.getElementById("isRenewal").checked
+let deform=document.getElementById("isDeform").checked
+
+if(!consent){
+alert("同意日を入力してください")
+return
+}
+
+let consentDate=new Date(consent)
+let firstVisitDate=firstVisit?new Date(firstVisit):null
+
+let baseDate
+
+if(renewal){
+
+baseDate=consentDate
+
+}else{
+
+if(firstVisitDate){
+
+let diff=(firstVisitDate-consentDate)/(1000*60*60*24)
+
+if(diff>30){
+
+baseDate=consentDate
+
+}else{
+
+baseDate=firstVisitDate
+
+}
+
+}else{
+
+baseDate=consentDate
+
+}
+
+}
+
+let expiry
+
+if(deform){
+
+expiry=new Date(baseDate)
+
+expiry.setMonth(expiry.getMonth()+1)
+
+expiry.setDate(expiry.getDate()-1)
+
+}else{
+
+let day=baseDate.getDate()
+
+if(day<=15){
+
+expiry=endOfMonth(addMonths(baseDate,5))
+
+}else{
+
+expiry=endOfMonth(addMonths(baseDate,6))
+
+}
+
+}
+
+document.getElementById("result").innerHTML=
+
+`
+<b>起算日</b><br>
+${baseDate.toLocaleDateString()}<br><br>
+
+<b>有効期限</b><br>
+${expiry.toLocaleDateString()}
+`
+
+}
+
+</script>
+
+</body>
+</html>
