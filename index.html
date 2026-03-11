@@ -2,159 +2,225 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>同意書期限チェッカー</title>
+<title>同意書管理</title>
 
 <style>
 
 body{
 font-family:sans-serif;
-max-width:500px;
+max-width:600px;
 margin:auto;
 padding:20px;
 }
 
-input,button{
-width:100%;
-padding:10px;
-margin:5px 0;
-font-size:16px;
+h1{
+text-align:center;
 }
 
-.result{
-margin-top:20px;
-padding:15px;
-background:#f2f2f2;
+input[type="text"],input[type="date"]{
+width:100%;
+padding:10px;
+margin-top:5px;
+}
+
+.checkbox{
+display:flex;
+gap:10px;
+margin-top:10px;
+}
+
+button{
+width:100%;
+padding:12px;
+margin-top:10px;
+background:#4CAF50;
+color:white;
+border:none;
+border-radius:5px;
+}
+
+.card{
+border:1px solid #ddd;
+padding:10px;
+margin-top:10px;
 border-radius:10px;
 }
 
-</style>
+.green{background:#e8f5e9;}
+.yellow{background:#fff9c4;}
+.orange{background:#ffe0b2;}
+.red{background:#ffcdd2;}
 
+</style>
 </head>
 
 <body>
 
-<h2>訪問マッサージ 同意書期限チェッカー</h2>
+<h1>同意書管理</h1>
+
+<h3>患者登録</h3>
+
+<label>患者名</label>
+<input type="text" id="name">
 
 <label>同意日</label>
-<input type="date" id="consentDate">
+<input type="date" id="consent">
 
-<label>初療日（初回のみ）</label>
-<input type="date" id="firstVisitDate">
+<label>初療日</label>
+<input type="date" id="first">
 
-<label>
-<input type="checkbox" id="isRenewal">
-再同意
-</label>
+<div class="checkbox">
+<input type="checkbox" id="renewal">
+<span>再同意</span>
+</div>
 
-<label>
-<input type="checkbox" id="isDeform">
-変形徒手矯正
-</label>
+<div class="checkbox">
+<input type="checkbox" id="deform">
+<span>変形徒手</span>
+</div>
 
-<button onclick="calculate()">期限計算</button>
+<button onclick="addPatient()">登録</button>
 
-<div class="result" id="result"></div>
+<h3>患者一覧</h3>
+
+<div id="list"></div>
 
 <script>
 
+let patients=JSON.parse(localStorage.getItem("patients")||"[]")
+
 function endOfMonth(date){
-
-return new Date(date.getFullYear(), date.getMonth()+1,0)
-
+return new Date(date.getFullYear(),date.getMonth()+1,0)
 }
 
-function addMonths(date,months){
-
+function addMonths(date,m){
 let d=new Date(date)
-
-d.setMonth(d.getMonth()+months)
-
+d.setMonth(d.getMonth()+m)
 return d
-
 }
 
-function calculate(){
-
-let consent=document.getElementById("consentDate").value
-let firstVisit=document.getElementById("firstVisitDate").value
-let renewal=document.getElementById("isRenewal").checked
-let deform=document.getElementById("isDeform").checked
-
-if(!consent){
-alert("同意日を入力してください")
-return
-}
+function calculateExpiry(consent,first,renewal,deform){
 
 let consentDate=new Date(consent)
-let firstVisitDate=firstVisit?new Date(firstVisit):null
-
-let baseDate
+let firstDate=first?new Date(first):null
+let base
 
 if(renewal){
-
-baseDate=consentDate
-
+base=consentDate
 }else{
-
-if(firstVisitDate){
-
-let diff=(firstVisitDate-consentDate)/(1000*60*60*24)
-
+if(firstDate){
+let diff=(firstDate-consentDate)/(1000*60*60*24)
 if(diff>30){
-
-baseDate=consentDate
-
+base=consentDate
 }else{
-
-baseDate=firstVisitDate
-
+base=firstDate
 }
-
 }else{
-
-baseDate=consentDate
-
+base=consentDate
 }
-
 }
 
 let expiry
 
 if(deform){
-
-expiry=new Date(baseDate)
-
+expiry=new Date(base)
 expiry.setMonth(expiry.getMonth()+1)
-
 expiry.setDate(expiry.getDate()-1)
-
 }else{
-
-let day=baseDate.getDate()
-
+let day=base.getDate()
 if(day<=15){
-
-expiry=endOfMonth(addMonths(baseDate,5))
-
+expiry=endOfMonth(addMonths(base,5))
 }else{
+expiry=endOfMonth(addMonths(base,6))
+}
+}
 
-expiry=endOfMonth(addMonths(baseDate,6))
+return expiry
 
 }
 
+function daysLeft(date){
+
+let today=new Date()
+let diff=(date-today)/(1000*60*60*24)
+
+return Math.floor(diff)
+
 }
 
-document.getElementById("result").innerHTML=
+function getColor(days){
 
+if(days<0)return "red"
+if(days<=30)return "orange"
+if(days<=60)return "yellow"
+return "green"
+
+}
+
+function addPatient(){
+
+let name=document.getElementById("name").value
+let consent=document.getElementById("consent").value
+let first=document.getElementById("first").value
+let renewal=document.getElementById("renewal").checked
+let deform=document.getElementById("deform").checked
+
+if(!name||!consent){
+alert("患者名と同意日を入力")
+return
+}
+
+patients.push({
+name,consent,first,renewal,deform
+})
+
+localStorage.setItem("patients",JSON.stringify(patients))
+
+render()
+
+}
+
+function render(){
+
+let list=document.getElementById("list")
+
+let data=patients.map(p=>{
+
+let expiry=calculateExpiry(p.consent,p.first,p.renewal,p.deform)
+let days=daysLeft(expiry)
+
+return {...p,expiry,days}
+
+})
+
+data.sort((a,b)=>a.expiry-b.expiry)
+
+list.innerHTML=""
+
+data.forEach(p=>{
+
+let color=getColor(p.days)
+
+let card=document.createElement("div")
+
+card.className="card "+color
+
+let month=p.expiry.getMonth()+1
+
+card.innerHTML=`
+<b>${p.name}</b><br>
+期限 ${p.expiry.toLocaleDateString()}<br>
+残り ${p.days}日<br>
+更新月 ${month}月
 `
-<b>起算日</b><br>
-${baseDate.toLocaleDateString()}<br><br>
 
-<b>有効期限</b><br>
-${expiry.toLocaleDateString()}
-`
+list.appendChild(card)
+
+})
 
 }
+
+render()
 
 </script>
 
