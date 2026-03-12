@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -6,253 +7,388 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-body{font-family:sans-serif;max-width:720px;margin:auto;padding:20px}
-h1{text-align:center}
-input,textarea{width:100%;padding:10px;margin-top:5px;box-sizing:border-box}
-textarea{min-height:60px}
-.checkbox{display:flex;gap:10px;margin-top:10px}
-button{padding:8px;margin-top:6px;background:#4CAF50;color:#fff;border:none;border-radius:6px}
-.card{border:1px solid #ddd;padding:12px;margin-top:10px;border-radius:10px}
-.green{background:#e8f5e9}
-.yellow{background:#fff9c4}
-.orange{background:#ffe0b2}
-.red{background:#ffcdd2}
-.small{font-size:0.9em;color:#444}
+
+body{
+font-family:sans-serif;
+max-width:720px;
+margin:auto;
+padding:20px;
+}
+
+h1{
+text-align:center;
+}
+
+.formBox{
+background:#ffffff;
+padding:15px;
+border-radius:10px;
+border:1px solid #ddd;
+}
+
+.editMode{
+background:#e3f2fd;
+}
+
+.notice{
+display:none;
+background:#bbdefb;
+padding:10px;
+margin-bottom:10px;
+border-radius:6px;
+font-weight:bold;
+}
+
+input,textarea{
+width:100%;
+padding:10px;
+margin-top:5px;
+box-sizing:border-box;
+}
+
+textarea{
+min-height:60px;
+}
+
+.checkbox{
+display:flex;
+align-items:center;
+gap:10px;
+margin-top:10px;
+}
+
+button{
+padding:10px;
+margin-top:10px;
+background:#4CAF50;
+color:#fff;
+border:none;
+border-radius:6px;
+cursor:pointer;
+}
+
+.card{
+border:1px solid #ddd;
+padding:12px;
+margin-top:10px;
+border-radius:10px;
+}
+
+.green{background:#e8f5e9;}
+.yellow{background:#fff9c4;}
+.orange{background:#ffe0b2;}
+.red{background:#ffcdd2;}
+
+.small{
+font-size:0.9em;
+color:#444;
+}
+
 </style>
+
 </head>
 
 <body>
 
 <h1>同意書管理</h1>
 
+<div class="notice" id="editNotice"></div>
+
+<div class="formBox" id="formBox">
+
 <h3>患者登録</h3>
 
-<label>患者名</label>
-<input type="text" id="name">
+<label>患者名</label> <input type="text" id="name">
 
-<label>同意日</label>
-<input type="date" id="consent">
+<label>同意日</label> <input type="date" id="consent">
 
-<label>初療日</label>
-<input type="date" id="first">
+<label>初療日</label> <input type="date" id="first">
 
 <div class="checkbox">
 <input type="checkbox" id="renewal">
-<span>再同意</span>
+<label for="renewal">再同意</label>
 </div>
 
 <div class="checkbox">
 <input type="checkbox" id="deform">
-<span>変形徒手</span>
+<label for="deform">変形徒手</label>
 </div>
 
-<label>通知日数</label>
-<input type="number" id="alertDays" value="30">
+<label>通知日数</label> <input type="number" id="alertDays" value="30">
 
-<label>更新（通院）予定日</label>
-<input type="date" id="planDate">
+<label>更新（通院）予定日</label> <input type="date" id="planDate">
 
 <label>メモ</label>
+
 <textarea id="memo"></textarea>
 
-<br>
 <button onclick="savePatient()">保存</button>
 
+</div>
+
 <h3>患者検索</h3>
+
 <input type="text" id="search" placeholder="患者名で検索" oninput="render()">
 
 <h3>患者一覧</h3>
+
 <div id="list"></div>
 
 <script>
 
-let patients = JSON.parse(localStorage.getItem("patients")||"[]")
+let patients = JSON.parse(localStorage.getItem("patients") || "[]")
+
 let editIndex = -1
 
-// 今日の日付を同意日MAXに設定
 let today = new Date().toISOString().split("T")[0]
-document.getElementById("consent").setAttribute("max",today)
+
+document.getElementById("consent").setAttribute("max", today)
 
 function endOfMonth(date){
 return new Date(date.getFullYear(),date.getMonth()+1,0)
 }
 
 function addMonths(date,m){
-let d=new Date(date)
+let d = new Date(date)
 d.setMonth(d.getMonth()+m)
 return d
 }
 
 function calculateExpiry(consent,first,renewal,deform){
 
-let consentDate=new Date(consent)
-let firstDate=first?new Date(first):null
+let consentDate = new Date(consent)
+let firstDate = first ? new Date(first) : null
 let base
 
 if(renewal){
-base=consentDate
+
+base = consentDate
+
 }else{
+
 if(firstDate){
-let diff=(firstDate-consentDate)/(1000*60*60*24)
-if(diff>30){base=consentDate}else{base=firstDate}
-}else{base=consentDate}
+
+let diff = (firstDate - consentDate)/(1000*60*60*24)
+
+if(diff > 30){
+base = consentDate
+}else{
+base = firstDate
+}
+
+}else{
+
+base = consentDate
+
+}
+
 }
 
 let expiry
 
 if(deform){
-expiry=new Date(base)
+
+expiry = new Date(base)
 expiry.setMonth(expiry.getMonth()+1)
 expiry.setDate(expiry.getDate()-1)
+
 }else{
-let day=base.getDate()
-if(day<=15){
-expiry=endOfMonth(addMonths(base,5))
+
+let day = base.getDate()
+
+if(day <= 15){
+expiry = endOfMonth(addMonths(base,5))
 }else{
-expiry=endOfMonth(addMonths(base,6))
+expiry = endOfMonth(addMonths(base,6))
 }
+
 }
 
 return expiry
+
 }
 
 function daysLeft(date){
-let today=new Date()
+
+let today = new Date()
 today.setHours(0,0,0,0)
-let diff=(date-today)/(1000*60*60*24)
+
+let diff = (date - today)/(1000*60*60*24)
+
 return Math.floor(diff)
+
 }
 
 function getColor(days){
-if(days<0)return "red"
-if(days<=30)return "orange"
-if(days<=60)return "yellow"
+
+if(days < 0) return "red"
+if(days <= 30) return "orange"
+if(days <= 60) return "yellow"
+
 return "green"
+
 }
 
 function clearForm(){
 
-document.getElementById("name").value=""
-document.getElementById("consent").value=""
-document.getElementById("first").value=""
-document.getElementById("renewal").checked=false
-document.getElementById("deform").checked=false
-document.getElementById("alertDays").value=30
-document.getElementById("memo").value=""
-document.getElementById("planDate").value=""
+document.getElementById("name").value = ""
+document.getElementById("consent").value = ""
+document.getElementById("first").value = ""
+document.getElementById("renewal").checked = false
+document.getElementById("deform").checked = false
+document.getElementById("alertDays").value = 30
+document.getElementById("memo").value = ""
+document.getElementById("planDate").value = ""
 
-editIndex=-1
+document.getElementById("editNotice").style.display="none"
+document.getElementById("formBox").classList.remove("editMode")
+
+editIndex = -1
+
 }
 
 function savePatient(){
 
-let name=document.getElementById("name").value
-let consent=document.getElementById("consent").value
-let first=document.getElementById("first").value
-let renewal=document.getElementById("renewal").checked
-let deform=document.getElementById("deform").checked
-let alertDays=parseInt(document.getElementById("alertDays").value)||30
-let memo=document.getElementById("memo").value
-let planDate=document.getElementById("planDate").value
+let name = document.getElementById("name").value
+let consent = document.getElementById("consent").value
+let first = document.getElementById("first").value
+let renewal = document.getElementById("renewal").checked
+let deform = document.getElementById("deform").checked
+let alertDays = parseInt(document.getElementById("alertDays").value) || 30
+let memo = document.getElementById("memo").value
+let planDate = document.getElementById("planDate").value
 
-if(!name||!consent){
+if(!name || !consent){
+
 alert("患者名と同意日を入力してください")
 return
-}
 
-let today = new Date().toISOString().split("T")[0]
+}
 
 if(consent > today){
+
 alert("同意日は未来日を入力できません")
 return
+
 }
 
-let data={name,consent,first,renewal,deform,alertDays,memo,planDate}
+let data = {name,consent,first,renewal,deform,alertDays,memo,planDate}
 
-if(editIndex>=0){
-patients[editIndex]=data
-editIndex=-1
+if(editIndex >= 0){
+
+patients[editIndex] = data
+editIndex = -1
+
 }else{
+
 patients.push(data)
+
 }
 
-localStorage.setItem("patients",JSON.stringify(patients))
+localStorage.setItem("patients", JSON.stringify(patients))
 
 clearForm()
+
 render()
+
 }
 
 function editPatient(i){
 
-let p=patients[i]
+let p = patients[i]
 
-document.getElementById("name").value=p.name
-document.getElementById("consent").value=p.consent
-document.getElementById("first").value=p.first
-document.getElementById("renewal").checked=p.renewal
-document.getElementById("deform").checked=p.deform
-document.getElementById("alertDays").value=p.alertDays
-document.getElementById("memo").value=p.memo
-document.getElementById("planDate").value=p.planDate
+document.getElementById("name").value = p.name
+document.getElementById("consent").value = p.consent
+document.getElementById("first").value = p.first
+document.getElementById("renewal").checked = p.renewal
+document.getElementById("deform").checked = p.deform
+document.getElementById("alertDays").value = p.alertDays
+document.getElementById("memo").value = p.memo
+document.getElementById("planDate").value = p.planDate
 
-editIndex=i
+document.getElementById("editNotice").innerText =
+"✏️ 編集中：" + p.name + "（上の入力欄を修正して保存してください）"
+
+document.getElementById("editNotice").style.display="block"
+
+document.getElementById("formBox").classList.add("editMode")
+
+window.scrollTo({top:0,behavior:"smooth"})
+
+editIndex = i
+
 }
 
 function deletePatient(i){
 
-if(!confirm("削除しますか？"))return
+if(!confirm("削除しますか？")) return
 
 patients.splice(i,1)
 
-localStorage.setItem("patients",JSON.stringify(patients))
+localStorage.setItem("patients", JSON.stringify(patients))
 
 render()
+
 }
 
 function render(){
 
-let list=document.getElementById("list")
-list.innerHTML=""
+let list = document.getElementById("list")
 
-let keyword=document.getElementById("search").value.toLowerCase()
+list.innerHTML = ""
 
-let filtered = patients.filter(p=>{
+let keyword = document.getElementById("search").value.toLowerCase()
+
+let filtered = patients.filter(p => {
+
 return !keyword || p.name.toLowerCase().includes(keyword)
+
 })
 
 filtered.sort((a,b)=>{
+
 let ea = calculateExpiry(a.consent,a.first,a.renewal,a.deform)
 let eb = calculateExpiry(b.consent,b.first,b.renewal,b.deform)
+
 return ea-eb
+
 })
 
-filtered.forEach((p)=>{
+filtered.forEach(p=>{
 
 let i = patients.indexOf(p)
 
-let expiry=calculateExpiry(p.consent,p.first,p.renewal,p.deform)
-let days=daysLeft(expiry)
-let color=getColor(days)
+let expiry = calculateExpiry(p.consent,p.first,p.renewal,p.deform)
 
-let card=document.createElement("div")
-card.className="card "+color
+let days = daysLeft(expiry)
 
-card.innerHTML=`
+let color = getColor(days)
+
+let card = document.createElement("div")
+
+card.className = "card " + color
+
+card.innerHTML = `
+
 <b>${p.name}</b><br>
 
 同意日 ${p.consent}<br>
-${p.first ? "初療日 "+p.first+"<br>" : ""}
+
+${p.first ? "初療日 " + p.first + "<br>" : ""}
 
 同意書期限 ${expiry.toLocaleDateString()}<br>
+
 残り ${days}日<br>
 
-${p.planDate ? "更新（通院）予定日 "+p.planDate+"<br>" : ""}
+${p.planDate ? "更新（通院）予定日 " + p.planDate + "<br>" : ""}
 
-${p.memo ? "<div class='small'>メモ: "+p.memo+"</div>" : ""}
+${p.memo ? "<div class='small'>メモ: " + p.memo + "</div>" : ""}
 
 <br>
+
 <button onclick="editPatient(${i})">編集</button>
 <button onclick="deletePatient(${i})">削除</button>
+
 `
 
 list.appendChild(card)
@@ -267,4 +403,3 @@ render()
 
 </body>
 </html>
-```
