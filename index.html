@@ -70,8 +70,9 @@ button{padding:8px;margin-top:6px;background:#4CAF50;color:#fff;border:none;bord
 let patients = JSON.parse(localStorage.getItem("patients")||"[]")
 let editIndex = -1
 
+// 今日の日付を同意日MAXに設定
 let today = new Date().toISOString().split("T")[0]
-document.getElementById("consent").max = today
+document.getElementById("consent").setAttribute("max",today)
 
 function endOfMonth(date){
 return new Date(date.getFullYear(),date.getMonth()+1,0)
@@ -151,5 +152,120 @@ let consent=document.getElementById("consent").value
 let first=document.getElementById("first").value
 let renewal=document.getElementById("renewal").checked
 let deform=document.getElementById("deform").checked
-let alertDays=p
+let alertDays=parseInt(document.getElementById("alertDays").value)||30
+let memo=document.getElementById("memo").value
+let planDate=document.getElementById("planDate").value
+
+if(!name||!consent){
+alert("患者名と同意日を入力してください")
+return
+}
+
+let today = new Date().toISOString().split("T")[0]
+
+if(consent > today){
+alert("同意日は未来日を入力できません")
+return
+}
+
+let data={name,consent,first,renewal,deform,alertDays,memo,planDate}
+
+if(editIndex>=0){
+patients[editIndex]=data
+editIndex=-1
+}else{
+patients.push(data)
+}
+
+localStorage.setItem("patients",JSON.stringify(patients))
+
+clearForm()
+render()
+}
+
+function editPatient(i){
+
+let p=patients[i]
+
+document.getElementById("name").value=p.name
+document.getElementById("consent").value=p.consent
+document.getElementById("first").value=p.first
+document.getElementById("renewal").checked=p.renewal
+document.getElementById("deform").checked=p.deform
+document.getElementById("alertDays").value=p.alertDays
+document.getElementById("memo").value=p.memo
+document.getElementById("planDate").value=p.planDate
+
+editIndex=i
+}
+
+function deletePatient(i){
+
+if(!confirm("削除しますか？"))return
+
+patients.splice(i,1)
+
+localStorage.setItem("patients",JSON.stringify(patients))
+
+render()
+}
+
+function render(){
+
+let list=document.getElementById("list")
+list.innerHTML=""
+
+let keyword=document.getElementById("search").value.toLowerCase()
+
+let filtered = patients.filter(p=>{
+return !keyword || p.name.toLowerCase().includes(keyword)
+})
+
+filtered.sort((a,b)=>{
+let ea = calculateExpiry(a.consent,a.first,a.renewal,a.deform)
+let eb = calculateExpiry(b.consent,b.first,b.renewal,b.deform)
+return ea-eb
+})
+
+filtered.forEach((p)=>{
+
+let i = patients.indexOf(p)
+
+let expiry=calculateExpiry(p.consent,p.first,p.renewal,p.deform)
+let days=daysLeft(expiry)
+let color=getColor(days)
+
+let card=document.createElement("div")
+card.className="card "+color
+
+card.innerHTML=`
+<b>${p.name}</b><br>
+
+同意日 ${p.consent}<br>
+${p.first ? "初療日 "+p.first+"<br>" : ""}
+
+同意書期限 ${expiry.toLocaleDateString()}<br>
+残り ${days}日<br>
+
+${p.planDate ? "更新（通院）予定日 "+p.planDate+"<br>" : ""}
+
+${p.memo ? "<div class='small'>メモ: "+p.memo+"</div>" : ""}
+
+<br>
+<button onclick="editPatient(${i})">編集</button>
+<button onclick="deletePatient(${i})">削除</button>
+`
+
+list.appendChild(card)
+
+})
+
+}
+
+render()
+
+</script>
+
+</body>
+</html>
 ```
