@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -13,7 +14,7 @@ h1{text-align:center}
 input,textarea{width:100%;padding:10px;margin-top:5px;box-sizing:border-box}
 textarea{min-height:60px}
 .checkbox{display:flex;gap:10px;margin-top:10px}
-button{width:100%;padding:12px;margin-top:10px;background:#4CAF50;color:#fff;border:none;border-radius:6px}
+button{padding:8px;margin-top:6px;background:#4CAF50;color:#fff;border:none;border-radius:6px}
 .card{border:1px solid #ddd;padding:12px;margin-top:10px;border-radius:10px}
 .green{background:#e8f5e9}
 .yellow{background:#fff9c4}
@@ -51,13 +52,17 @@ button{width:100%;padding:12px;margin-top:10px;background:#4CAF50;color:#fff;bor
 <label>通知日数</label>
 <input type="number" id="alertDays" value="30">
 
-<label>更新予定日</label>
+<label>更新（通院）予定日</label>
 <input type="date" id="planDate">
 
 <label>メモ</label>
 <textarea id="memo"></textarea>
 
+<br>
 <button onclick="savePatient()">保存</button>
+
+<h3>患者検索</h3>
+<input type="text" id="search" placeholder="患者名で検索" oninput="render()">
 
 <h3>患者一覧</h3>
 <div id="list"></div>
@@ -65,6 +70,7 @@ button{width:100%;padding:12px;margin-top:10px;background:#4CAF50;color:#fff;bor
 <script>
 
 let patients = JSON.parse(localStorage.getItem("patients")||"[]")
+let editIndex = -1
 
 function endOfMonth(date){
 return new Date(date.getFullYear(),date.getMonth()+1,0)
@@ -123,6 +129,20 @@ if(days<=60)return "yellow"
 return "green"
 }
 
+function clearForm(){
+
+document.getElementById("name").value=""
+document.getElementById("consent").value=""
+document.getElementById("first").value=""
+document.getElementById("renewal").checked=false
+document.getElementById("deform").checked=false
+document.getElementById("alertDays").value=30
+document.getElementById("memo").value=""
+document.getElementById("planDate").value=""
+
+editIndex=-1
+}
+
 function savePatient(){
 
 let name=document.getElementById("name").value
@@ -139,14 +159,40 @@ alert("患者名と同意日を入力")
 return
 }
 
-patients.push({name,consent,first,renewal,deform,alertDays,memo,planDate})
+let data={name,consent,first,renewal,deform,alertDays,memo,planDate}
+
+if(editIndex>=0){
+patients[editIndex]=data
+editIndex=-1
+}else{
+patients.push(data)
+}
 
 localStorage.setItem("patients",JSON.stringify(patients))
 
+clearForm()
 render()
 }
 
+function editPatient(i){
+
+let p=patients[i]
+
+document.getElementById("name").value=p.name
+document.getElementById("consent").value=p.consent
+document.getElementById("first").value=p.first
+document.getElementById("renewal").checked=p.renewal
+document.getElementById("deform").checked=p.deform
+document.getElementById("alertDays").value=p.alertDays
+document.getElementById("memo").value=p.memo
+document.getElementById("planDate").value=p.planDate
+
+editIndex=i
+}
+
 function deletePatient(i){
+
+if(!confirm("削除しますか？"))return
 
 patients.splice(i,1)
 
@@ -161,7 +207,13 @@ let list=document.getElementById("list")
 
 list.innerHTML=""
 
+let keyword=document.getElementById("search").value.toLowerCase()
+
 patients.forEach((p,i)=>{
+
+if(keyword && !p.name.toLowerCase().includes(keyword)){
+return
+}
 
 let expiry=calculateExpiry(p.consent,p.first,p.renewal,p.deform)
 
@@ -175,11 +227,19 @@ card.className="card "+color
 
 card.innerHTML=`
 <b>${p.name}</b><br>
-期限 ${expiry.toLocaleDateString()}<br>
+
+同意日 ${p.consent}<br>
+${p.first ? "初療日 "+p.first+"<br>" : ""}
+
+同意書期限 ${expiry.toLocaleDateString()}<br>
 残り ${days}日<br>
-${p.planDate ? "更新予定 "+p.planDate+"<br>" : ""}
+
+${p.planDate ? "更新（通院）予定日 "+p.planDate+"<br>" : ""}
+
 ${p.memo ? "<div class='small'>メモ: "+p.memo+"</div>" : ""}
+
 <br>
+<button onclick="editPatient(${i})">編集</button>
 <button onclick="deletePatient(${i})">削除</button>
 `
 
@@ -201,3 +261,4 @@ navigator.serviceWorker.register('sw.js')
 
 </body>
 </html>
+```
