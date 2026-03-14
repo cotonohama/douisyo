@@ -15,9 +15,7 @@ padding:20px;
 background:#f5f5f5;
 }
 
-h1{
-text-align:center;
-}
+h1{text-align:center;}
 
 .formBox{
 background:#fff;
@@ -55,9 +53,7 @@ margin-top:5px;
 box-sizing:border-box;
 }
 
-textarea{
-min-height:60px;
-}
+textarea{min-height:60px;}
 
 .checkbox-group{
 display:flex;
@@ -138,13 +134,13 @@ margin-top:10px;
 <label>同意日</label>
 <input type="date" id="consent">
 
-<label>初療日（空欄可）</label>
+<label>初療日（初回のみ使用）</label>
 <input type="date" id="first">
 
 <div class="checkbox-group">
 
 <div class="checkbox">
-<input type="checkbox" id="renewal">
+<input type="checkbox" id="renewal" onchange="toggleFirstDate()">
 <label for="renewal">再同意</label>
 </div>
 
@@ -165,6 +161,11 @@ margin-top:10px;
 <textarea id="memo"></textarea>
 
 <button id="saveBtn" onclick="savePatient()">保存する</button>
+
+<button onclick="exportCSV()">CSVバックアップ</button>
+
+<input type="file" id="csvImport" style="display:none" onchange="importCSV(event)">
+<button onclick="document.getElementById('csvImport').click()">CSV復元</button>
 
 </div>
 
@@ -197,8 +198,16 @@ let patients = JSON.parse(localStorage.getItem("patients") || "[]")
 let editIndex=-1
 let filterMode="all"
 
-const todayStr=new Date().toISOString().split("T")[0]
+function toggleFirstDate(){
 
+let renewal=document.getElementById("renewal").checked
+let first=document.getElementById("first")
+
+first.disabled=renewal
+
+}
+
+const todayStr=new Date().toISOString().split("T")[0]
 document.getElementById("consent").setAttribute("max",todayStr)
 
 function endOfMonth(date){
@@ -211,24 +220,28 @@ d.setMonth(d.getMonth()+m)
 return d
 }
 
-function calculateExpiry(consent,first,renewal,deform){
+function calculateExpiry(consent, first, renewal, deform){
 
-let consentDate=new Date(consent)
-let firstDate=first?new Date(first):null
+let consentDate = new Date(consent)
+let firstDate = first ? new Date(first) : null
 let base
 
 if(renewal){
-base=consentDate
+
+base = consentDate
+
 }else{
 
 if(firstDate){
 
-let diff=(firstDate-consentDate)/(1000*60*60*24)
+let diff = (firstDate - consentDate)/(1000*60*60*24)
 
-base=(diff>30)?consentDate:firstDate
+base = diff>30 ? consentDate : firstDate
 
 }else{
-base=consentDate
+
+base = consentDate
+
 }
 
 }
@@ -316,6 +329,8 @@ document.getElementById("deform").checked=false
 document.getElementById("alertDays").value=14
 document.getElementById("memo").value=""
 document.getElementById("planDate").value=""
+
+document.getElementById("first").disabled=false
 
 document.getElementById("editNotice").style.display="none"
 document.getElementById("formBox").classList.remove("editMode")
@@ -406,7 +421,6 @@ renderSchedule()
 function renderSchedule(){
 
 let schedule=document.getElementById("schedule")
-
 schedule.innerHTML=""
 
 let list=[...patients]
@@ -459,6 +473,67 @@ setTimeout(()=>addToCalendar(i),i*800)
 
 }
 
+function exportCSV(){
+
+let rows=[["name","consent","first","renewal","deform","alertDays","memo","planDate"]]
+
+patients.forEach(p=>{
+rows.push([p.name,p.consent,p.first,p.renewal,p.deform,p.alertDays,p.memo,p.planDate])
+})
+
+let csv=rows.map(r=>r.join(",")).join("\n")
+
+let blob=new Blob([csv],{type:"text/csv"})
+
+let link=document.createElement("a")
+
+link.href=URL.createObjectURL(blob)
+
+link.download="patients_backup.csv"
+
+link.click()
+
+}
+
+function importCSV(event){
+
+let file=event.target.files[0]
+
+let reader=new FileReader()
+
+reader.onload=function(e){
+
+let lines=e.target.result.split("\n").slice(1)
+
+patients=lines.filter(l=>l).map(l=>{
+
+let c=l.split(",")
+
+return{
+
+name:c[0],
+consent:c[1],
+first:c[2],
+renewal:c[3]==="true",
+deform:c[4]==="true",
+alertDays:parseInt(c[5]),
+memo:c[6],
+planDate:c[7]
+
+}
+
+})
+
+localStorage.setItem("patients",JSON.stringify(patients))
+
+render()
+
+}
+
+reader.readAsText(file)
+
+}
+
 function showAll(){filterMode="all";render()}
 function showThisMonth(){filterMode="month";render()}
 function showNextMonth(){filterMode="next";render()}
@@ -475,6 +550,8 @@ document.getElementById("deform").checked=p.deform
 document.getElementById("alertDays").value=p.alertDays
 document.getElementById("memo").value=p.memo
 document.getElementById("planDate").value=p.planDate
+
+toggleFirstDate()
 
 document.getElementById("editNotice").innerText="編集中："+p.name
 document.getElementById("editNotice").style.display="block"
@@ -502,5 +579,6 @@ render()
 render()
 
 </script>
+
 </body>
 </html>
