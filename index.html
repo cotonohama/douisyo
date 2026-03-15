@@ -17,9 +17,7 @@ max-width:900px;
 margin:auto;
 }
 
-h1{
-text-align:center;
-}
+h1{text-align:center;}
 
 input,textarea,button{
 width:100%;
@@ -43,18 +41,9 @@ border-radius:8px;
 margin-bottom:20px;
 }
 
-.red{
-color:red;
-font-weight:bold;
-}
-
-.expired{
-background:#ffdddd;
-}
-
-.gray{
-background:#eee;
-}
+.red{color:red;font-weight:bold;}
+.expired{background:#ffd6d6;}
+.gray{background:#eee;}
 
 table{
 width:100%;
@@ -65,6 +54,12 @@ th,td{
 border:1px solid #ddd;
 padding:6px;
 font-size:14px;
+}
+
+.checkbox-row{
+display:flex;
+gap:20px;
+margin-bottom:15px;
 }
 
 </style>
@@ -85,7 +80,9 @@ font-size:14px;
 
 <div class="card">
 
-<h3>患者登録</h3>
+<h3>患者登録 / 編集</h3>
+
+<input type="hidden" id="editIndex">
 
 患者名
 <input id="name">
@@ -96,6 +93,8 @@ font-size:14px;
 初療日
 <input type="date" id="first">
 
+<div class="checkbox-row">
+
 <label>
 <input type="checkbox" id="renewal"> 再同意
 </label>
@@ -103,6 +102,8 @@ font-size:14px;
 <label>
 <input type="checkbox" id="deform"> 変形徒手
 </label>
+
+</div>
 
 通知日数
 <input type="number" id="notice" value="30">
@@ -127,27 +128,11 @@ font-size:14px;
 <th>名前</th>
 <th>期限</th>
 <th>残日数</th>
-<th>削除</th>
+<th>操作</th>
 </tr>
 </thead>
 <tbody></tbody>
-</table>
 
-</div>
-
-<div class="card">
-
-<h3>翌月更新予定</h3>
-
-<table id="nextMonth">
-<thead>
-<tr>
-<th>名前</th>
-<th>期限</th>
-<th>残日数</th>
-</tr>
-</thead>
-<tbody></tbody>
 </table>
 
 </div>
@@ -165,11 +150,24 @@ let patients = JSON.parse(localStorage.getItem("patients")||"[]")
 
 let today = new Date()
 
-document.getElementById("consent").max = today.toISOString().split("T")[0]
+const consent=document.getElementById("consent")
+const first=document.getElementById("first")
+const deform=document.getElementById("deform")
+const notice=document.getElementById("notice")
+
+consent.addEventListener("change",()=>{
+first.min=consent.value
+})
+
+deform.addEventListener("change",()=>{
+if(deform.checked){
+notice.value=15
+}else{
+notice.value=30
+}
+})
 
 document.getElementById("renewal").addEventListener("change",()=>{
-
-let first = document.getElementById("first")
 
 if(document.getElementById("renewal").checked){
 
@@ -197,20 +195,20 @@ return d
 
 function calculateExpiry(consent,first,renewal,deform){
 
-let consentDate = new Date(consent)
-let firstDate = first ? new Date(first) : null
+let consentDate=new Date(consent)
+let firstDate=first?new Date(first):null
 
 let base
 
 if(renewal){
 
-base = consentDate
+base=consentDate
 
 }else{
 
 if(firstDate){
 
-let diff = (firstDate-consentDate)/(1000*60*60*24)
+let diff=(firstDate-consentDate)/(1000*60*60*24)
 
 if(diff>30){
 base=consentDate
@@ -219,7 +217,9 @@ base=firstDate
 }
 
 }else{
+
 base=consentDate
+
 }
 
 }
@@ -250,6 +250,8 @@ return expiry
 
 function save(){
 
+let idx=document.getElementById("editIndex").value
+
 let name=document.getElementById("name").value
 let consent=document.getElementById("consent").value
 let first=document.getElementById("first").value
@@ -260,25 +262,19 @@ let visit=document.getElementById("visit").value
 let memo=document.getElementById("memo").value
 
 if(!name||!consent){
-
 alert("名前と同意日は必須です")
 return
-
 }
 
 let expiry=calculateExpiry(consent,first,renewal,deform)
 
-patients.push({
-name,
-consent,
-first,
-renewal,
-deform,
-notice,
-visit,
-memo,
-expiry
-})
+let data={name,consent,first,renewal,deform,notice,visit,memo,expiry}
+
+if(idx===""){
+patients.push(data)
+}else{
+patients[idx]=data
+}
 
 localStorage.setItem("patients",JSON.stringify(patients))
 
@@ -295,70 +291,52 @@ let keyword=document.getElementById("search").value
 
 let list=[...patients]
 
-list.sort((a,b)=> new Date(a.expiry)-new Date(b.expiry))
+list.sort((a,b)=>new Date(a.expiry)-new Date(b.expiry))
 
 list.forEach((p,i)=>{
 
-if(keyword && !p.name.includes(keyword)) return
+if(keyword&&!p.name.includes(keyword))return
 
 let exp=new Date(p.expiry)
 let diff=Math.ceil((exp-today)/(1000*60*60*24))
 
 let tr=document.createElement("tr")
 
-if(diff<0){
-tr.classList.add("expired")
-}
+if(diff<0)tr.classList.add("expired")
 
-let red = diff <= p.notice ? "red":""
+let red=diff<=p.notice?"red":""
 
 tr.innerHTML=`
 <td>${p.name}</td>
 <td>${exp.toLocaleDateString()}</td>
 <td class="${red}">${diff}</td>
-<td><button onclick="del(${i})">削除</button></td>
+<td>
+<button onclick="edit(${i})">編集</button>
+<button onclick="del(${i})">削除</button>
+</td>
 `
 
 tbody.appendChild(tr)
 
 })
 
-renderNextMonth()
-
 }
 
-function renderNextMonth(){
+function edit(i){
 
-let tbody=document.querySelector("#nextMonth tbody")
-tbody.innerHTML=""
+let p=patients[i]
 
-let nextMonth=new Date()
-nextMonth.setMonth(nextMonth.getMonth()+1)
+document.getElementById("editIndex").value=i
+document.getElementById("name").value=p.name
+document.getElementById("consent").value=p.consent
+document.getElementById("first").value=p.first
+document.getElementById("renewal").checked=p.renewal
+document.getElementById("deform").checked=p.deform
+document.getElementById("notice").value=p.notice
+document.getElementById("visit").value=p.visit
+document.getElementById("memo").value=p.memo
 
-patients.forEach(p=>{
-
-let exp=new Date(p.expiry)
-
-if(
-exp.getMonth()==nextMonth.getMonth() &&
-exp.getFullYear()==nextMonth.getFullYear()
-){
-
-let diff=Math.ceil((exp-today)/(1000*60*60*24))
-
-let tr=document.createElement("tr")
-
-tr.innerHTML=`
-<td>${p.name}</td>
-<td>${exp.toLocaleDateString()}</td>
-<td>${diff}</td>
-`
-
-tbody.appendChild(tr)
-
-}
-
-})
+window.scrollTo(0,0)
 
 }
 
@@ -381,19 +359,13 @@ function exportCSV(){
 let csv="name,consent,first,renewal,deform,notice,visit,memo\n"
 
 patients.forEach(p=>{
-
 csv+=`${p.name},${p.consent},${p.first},${p.renewal},${p.deform},${p.notice},${p.visit},${p.memo}\n`
-
 })
 
 let blob=new Blob([csv])
-
 let a=document.createElement("a")
-
 a.href=URL.createObjectURL(blob)
-
 a.download="backup.csv"
-
 a.click()
 
 }
