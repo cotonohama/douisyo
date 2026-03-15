@@ -5,8 +5,6 @@
 <title>同意書管理</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<link rel="manifest" href="manifest.json">
-
 <style>
 
 body{
@@ -43,7 +41,6 @@ margin-bottom:20px;
 
 .red{color:red;font-weight:bold;}
 .expired{background:#ffd6d6;}
-.gray{background:#eee;}
 
 table{
 width:100%;
@@ -62,24 +59,6 @@ gap:20px;
 margin-bottom:15px;
 }
 
-.calendar{
-display:grid;
-grid-template-columns:repeat(7,1fr);
-gap:5px;
-}
-
-.day{
-background:#fff;
-border:1px solid #ddd;
-min-height:70px;
-padding:5px;
-font-size:12px;
-}
-
-.day strong{
-display:block;
-}
-
 </style>
 
 </head>
@@ -87,13 +66,6 @@ display:block;
 <body>
 
 <h1>同意書管理</h1>
-
-<div class="card">
-
-<h3>患者検索</h3>
-<input id="search" placeholder="名前検索" oninput="render()">
-
-</div>
 
 <div class="card">
 
@@ -150,26 +122,11 @@ display:block;
 
 </div>
 
-<div class="card">
-
-<h3>更新カレンダー</h3>
-
-<div id="calendar" class="calendar"></div>
-
-</div>
-
-<div class="card">
-
-<button onclick="exportCSV()">CSVバックアップ</button>
-<input type="file" onchange="importCSV(event)">
-
-</div>
-
 <script>
 
 let patients = JSON.parse(localStorage.getItem("patients")||"[]")
 
-let today=new Date()
+let today = new Date()
 
 const consent=document.getElementById("consent")
 const first=document.getElementById("first")
@@ -187,10 +144,8 @@ notice.value=deform.checked?15:30
 document.getElementById("renewal").addEventListener("change",()=>{
 if(document.getElementById("renewal").checked){
 first.disabled=true
-first.classList.add("gray")
 }else{
 first.disabled=false
-first.classList.remove("gray")
 }
 })
 
@@ -251,44 +206,44 @@ return expiry
 
 function save(){
 
-let idx=document.getElementById("editIndex").value
+let idx = document.getElementById("editIndex").value
 
-let name=document.getElementById("name").value
-let consent=document.getElementById("consent").value
-let first=document.getElementById("first").value
-let renewal=document.getElementById("renewal").checked
-let deform=document.getElementById("deform").checked
-let notice=document.getElementById("notice").value
-let memo=document.getElementById("memo").value
+let name = document.getElementById("name").value
+let consent = document.getElementById("consent").value
+let first = document.getElementById("first").value || null
+let renewal = document.getElementById("renewal").checked
+let deform = document.getElementById("deform").checked
+let notice = document.getElementById("notice").value
+let memo = document.getElementById("memo").value
 
-if(!name||!consent){
+if(!name || !consent){
 alert("名前と同意日は必須です")
 return
 }
 
-let expiry=calculateExpiry(consent,first,renewal,deform)
+let expiry = calculateExpiry(consent, first, renewal, deform)
 
-let data={
-id: idx===""?Date.now():patients[idx].id,
-name,
-consent,
-first,
-renewal,
-deform,
-notice,
-memo,
-expiry
+let data = {
+id: idx === "" ? Date.now() : patients[idx].id,
+name: name,
+consent: consent,
+first: first,
+renewal: renewal,
+deform: deform,
+notice: notice,
+memo: memo,
+expiry: expiry.toISOString()
 }
 
-if(idx===""){
+if(idx === ""){
 patients.push(data)
 }else{
-patients[idx]=data
+patients[idx] = data
 }
 
-localStorage.setItem("patients",JSON.stringify(patients))
+localStorage.setItem("patients", JSON.stringify(patients))
 
-location.reload()
+render()
 
 }
 
@@ -297,17 +252,14 @@ function render(){
 let tbody=document.querySelector("#list tbody")
 tbody.innerHTML=""
 
-let keyword=document.getElementById("search").value
-
 let list=patients.map((p,i)=>({...p,index:i}))
 
 list.sort((a,b)=>new Date(a.expiry)-new Date(b.expiry))
 
 list.forEach(p=>{
 
-if(keyword&&!p.name.includes(keyword))return
+let exp = new Date(p.expiry)
 
-let exp=new Date(p.expiry)
 let diff=Math.ceil((exp-today)/(1000*60*60*24))
 
 let tr=document.createElement("tr")
@@ -323,15 +275,12 @@ tr.innerHTML=`
 <td>
 <button onclick="edit(${p.index})">編集</button>
 <button onclick="del(${p.index})">削除</button>
-<button onclick="addCalendar('${p.name}','${exp.toISOString().split("T")[0]}')">📅</button>
 </td>
 `
 
 tbody.appendChild(tr)
 
 })
-
-renderCalendar()
 
 }
 
@@ -366,125 +315,8 @@ render()
 
 }
 
-function addCalendar(name,date){
-
-let url=`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${name} 同意書更新&dates=${date.replace(/-/g,"")}T090000/${date.replace(/-/g,"")}T100000`
-
-window.open(url)
-
-}
-
-function renderCalendar(){
-
-let cal=document.getElementById("calendar")
-cal.innerHTML=""
-
-let now=new Date()
-let year=now.getFullYear()
-let month=now.getMonth()
-
-let last=new Date(year,month+1,0).getDate()
-
-for(let i=1;i<=last;i++){
-
-let day=document.createElement("div")
-day.className="day"
-
-day.innerHTML=`<strong>${i}</strong>`
-
-patients.forEach(p=>{
-
-let exp=new Date(p.expiry)
-
-if(exp.getDate()==i && exp.getMonth()==month){
-
-let div=document.createElement("div")
-div.textContent=p.name
-
-day.appendChild(div)
-
-}
-
-})
-
-cal.appendChild(day)
-
-}
-
-}
-
-function exportCSV(){
-
-let csv="name,consent,first,renewal,deform,notice,memo\n"
-
-patients.forEach(p=>{
-csv+=`${p.name},${p.consent},${p.first},${p.renewal},${p.deform},${p.notice},${p.memo}\n`
-})
-
-let blob=new Blob([csv])
-let a=document.createElement("a")
-a.href=URL.createObjectURL(blob)
-a.download="backup.csv"
-a.click()
-
-}
-
-function importCSV(e){
-
-let file=e.target.files[0]
-
-let reader=new FileReader()
-
-reader.onload=function(){
-
-let rows=reader.result.split("\n")
-
-patients=[]
-
-rows.slice(1).forEach(r=>{
-
-let c=r.split(",")
-
-if(c[0]){
-
-let expiry=calculateExpiry(c[1],c[2],c[3]=="true",c[4]=="true")
-
-patients.push({
-
-id:Date.now()+Math.random(),
-name:c[0],
-consent:c[1],
-first:c[2],
-renewal:c[3]=="true",
-deform:c[4]=="true",
-notice:c[5],
-memo:c[6],
-expiry
-
-})
-
-}
-
-})
-
-localStorage.setItem("patients",JSON.stringify(patients))
-
-location.reload()
-
-}
-
-reader.readAsText(file)
-
-}
-
 render()
 
-</script>
-
-<script>
-if ("serviceWorker" in navigator) {
-navigator.serviceWorker.register("sw.js");
-}
 </script>
 
 </body>
