@@ -123,16 +123,18 @@ background:white;
 <input type="date" id="first">
 
 <label>
-<input type="checkbox" id="deform">変形徒手
+<input type="checkbox" id="deform">変形徒手矯正
 </label>
 
 通知日数
-<input type="number" id="notice" value="30">
+<input type="number" id="notice" value="7">
 
 メモ
 <textarea id="memo"></textarea>
 
 <button onclick="save()">保存</button>
+<button onclick="enableNotification()">通知を有効化</button>
+<button onclick="backupCSV()">CSVバックアップ</button>
 
 </div>
 
@@ -252,7 +254,7 @@ document.getElementById("name").value=""
 document.getElementById("consent").value=""
 document.getElementById("first").value=""
 document.getElementById("deform").checked=false
-document.getElementById("notice").value=30
+document.getElementById("notice").value=7
 document.getElementById("memo").value=""
 
 }
@@ -314,7 +316,10 @@ let tr=document.createElement("tr")
 if(diff<0)tr.classList.add("expired")
 
 tr.innerHTML=`
-<td>${name}</td>
+<td>
+${name}<br>
+${p.notice}日前通知
+</td>
 <td>${exp.toLocaleDateString()}</td>
 <td class="${warn}">${remain}</td>
 <td>
@@ -338,6 +343,8 @@ nextBox.innerHTML+=`<div onclick="scrollCalendar()">${name} ${exp.getDate()}日<
 
 renderCalendar(thisMonth,"calendarThis")
 renderCalendar(nextMonth,"calendarNext")
+
+checkNotification()
 
 }
 
@@ -386,6 +393,15 @@ if(exp.getMonth()==month && exp.getDate()==i){
 let name=p.deform?p.name+"（変形徒手）":p.name
 
 cell.innerHTML+=name+"<br>"
+
+let noticeDay=new Date(exp)
+noticeDay.setDate(noticeDay.getDate()-p.notice)
+
+let today=new Date()
+
+if(today>=noticeDay && today<=exp){
+cell.innerHTML+=name+"(要再同意準備)<br>"
+}
 
 }
 
@@ -442,6 +458,68 @@ let title="同意書更新 "+p.name
 let url=`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${date}/${date}`
 
 window.open(url)
+
+}
+
+function enableNotification(){
+
+if(Notification.permission==="granted"){
+alert("通知はすでに有効です")
+return
+}
+
+Notification.requestPermission().then(p=>{
+if(p==="granted"){
+alert("通知が有効になりました")
+}
+})
+
+}
+
+function checkNotification(){
+
+let today=new Date()
+
+patients.forEach(p=>{
+
+let exp=new Date(p.expiry)
+
+let noticeDay=new Date(exp)
+noticeDay.setDate(noticeDay.getDate()-p.notice)
+
+if(today.toDateString()===noticeDay.toDateString()){
+
+if(Notification.permission==="granted"){
+
+new Notification("同意書更新準備",{
+body:p.name+" "+p.notice+"日前になりました"
+})
+
+}
+
+}
+
+})
+
+}
+
+function backupCSV(){
+
+let csv="名前,同意日,初療日,変形徒手,通知日数,期限,メモ\n"
+
+patients.forEach(p=>{
+
+csv+=`${p.name},${p.consent},${p.first},${p.deform},${p.notice},${p.expiry},${p.memo}\n`
+
+})
+
+let blob=new Blob([csv],{type:"text/csv"})
+let url=URL.createObjectURL(blob)
+
+let a=document.createElement("a")
+a.href=url
+a.download="patients_backup.csv"
+a.click()
 
 }
 
