@@ -124,30 +124,9 @@ margin-bottom:15px;
 
 <script>
 
-let patients = JSON.parse(localStorage.getItem("patients")||"[]")
+let patients = JSON.parse(localStorage.getItem("patients")||[])
 
 let today = new Date()
-
-const consent=document.getElementById("consent")
-const first=document.getElementById("first")
-const deform=document.getElementById("deform")
-const notice=document.getElementById("notice")
-
-consent.addEventListener("change",()=>{
-first.min=consent.value
-})
-
-deform.addEventListener("change",()=>{
-notice.value=deform.checked?15:30
-})
-
-document.getElementById("renewal").addEventListener("change",()=>{
-if(document.getElementById("renewal").checked){
-first.disabled=true
-}else{
-first.disabled=false
-}
-})
 
 function endOfMonth(d){
 return new Date(d.getFullYear(),d.getMonth()+1,0)
@@ -159,23 +138,23 @@ d.setMonth(d.getMonth()+m)
 return d
 }
 
-function calculateExpiry(consent,first,renewal,deform){
-
-let consentDate=new Date(consent)
-let firstDate=first?new Date(first):null
+function calculateExpiry(consent,first,deform,isEdit){
 
 let base
 
-if(renewal){
+let consentDate=new Date(consent)
+
+if(isEdit){
+
+// 編集時 → 同意日基準
 base=consentDate
+
 }else{
 
-if(firstDate){
+// 初回登録
 
-let diff=(firstDate-consentDate)/(1000*60*60*24)
-
-base=diff>30?consentDate:firstDate
-
+if(first){
+base=new Date(first)
 }else{
 base=consentDate
 }
@@ -206,44 +185,58 @@ return expiry
 
 function save(){
 
-let idx = document.getElementById("editIndex").value
+let idx=document.getElementById("editIndex").value
 
-let name = document.getElementById("name").value
-let consent = document.getElementById("consent").value
-let first = document.getElementById("first").value || null
-let renewal = document.getElementById("renewal").checked
-let deform = document.getElementById("deform").checked
-let notice = document.getElementById("notice").value
-let memo = document.getElementById("memo").value
+let name=document.getElementById("name").value
+let consent=document.getElementById("consent").value
+let first=document.getElementById("first").value || null
+let deform=document.getElementById("deform").checked
+let notice=document.getElementById("notice").value
+let memo=document.getElementById("memo").value
 
-if(!name || !consent){
+if(!name||!consent){
 alert("名前と同意日は必須です")
 return
 }
 
-let expiry = calculateExpiry(consent, first, renewal, deform)
+let isEdit=idx!=="" 
 
-let data = {
-id: idx === "" ? Date.now() : patients[idx].id,
-name: name,
-consent: consent,
-first: first,
-renewal: renewal,
-deform: deform,
-notice: notice,
-memo: memo,
-expiry: expiry.toISOString()
+let expiry=calculateExpiry(consent,first,deform,isEdit)
+
+let data={
+id: idx===""?Date.now():patients[idx].id,
+name,
+consent,
+first,
+deform,
+notice,
+memo,
+expiry:expiry.toISOString()
 }
 
-if(idx === ""){
+if(idx===""){
 patients.push(data)
 }else{
-patients[idx] = data
+patients[idx]=data
 }
 
-localStorage.setItem("patients", JSON.stringify(patients))
+localStorage.setItem("patients",JSON.stringify(patients))
 
 render()
+
+clearForm()
+
+}
+
+function clearForm(){
+
+document.getElementById("editIndex").value=""
+document.getElementById("name").value=""
+document.getElementById("consent").value=""
+document.getElementById("first").value=""
+document.getElementById("deform").checked=false
+document.getElementById("notice").value=30
+document.getElementById("memo").value=""
 
 }
 
@@ -258,7 +251,7 @@ list.sort((a,b)=>new Date(a.expiry)-new Date(b.expiry))
 
 list.forEach(p=>{
 
-let exp = new Date(p.expiry)
+let exp=new Date(p.expiry)
 
 let diff=Math.ceil((exp-today)/(1000*60*60*24))
 
@@ -292,7 +285,6 @@ document.getElementById("editIndex").value=i
 document.getElementById("name").value=p.name
 document.getElementById("consent").value=p.consent
 document.getElementById("first").value=p.first
-document.getElementById("renewal").checked=p.renewal
 document.getElementById("deform").checked=p.deform
 document.getElementById("notice").value=p.notice
 document.getElementById("memo").value=p.memo
