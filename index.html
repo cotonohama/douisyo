@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>同意書管理システム (Full Backup Edition)</title>
+<title>同意書管理システム (Local Management Edition)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
     body{font-family:sans-serif;background:#f5f5f5;padding:20px;max-width:1000px;margin:auto;}
@@ -63,7 +63,7 @@
     <label>通知準備（期限の何日前に通知するか）</label><input type="number" id="notice" value="7">
     <label>メモ</label><textarea id="memo" placeholder="備考など"></textarea>
     
-    <button onclick="save()" style="font-size:1.2em; padding:15px;">保存（クラウド同期）</button>
+    <button onclick="save()" style="font-size:1.2em; padding:15px;">保存（ローカル保存）</button>
     <div class="flex-group">
         <button onclick="enableNotification()" style="background:#2196F3; flex:1;">通知許可設定</button>
         <button onclick="backupCSV()" style="background:#607d8b; flex:1;">CSV保存(Excel対応)</button>
@@ -89,8 +89,8 @@
 </div>
 
 <script>
-// --- [設定] GASのURLをここに貼り付け ---
-const GAS_URL = "ここにGASのURLを貼ってください"; 
+// --- クラウド同期設定（現在は無効化） ---
+const GAS_URL = null; 
 
 let patients = JSON.parse(localStorage.getItem("patients") || "[]");
 
@@ -138,9 +138,11 @@ async function save() {
     if (!isEdit) { patients.push(data); }
     else { patients[idx] = data; }
 
+    // ブラウザに保存
     localStorage.setItem("patients", JSON.stringify(patients));
 
-    if (GAS_URL && GAS_URL !== "ここにGASのURLを貼ってください") {
+    // GAS送信は無効化中
+    if (GAS_URL) {
         sendToGAS(data);
     }
 
@@ -150,12 +152,7 @@ async function save() {
 }
 
 function sendToGAS(data) {
-    fetch(GAS_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-    }).catch(e => console.error("GAS送信失敗", e));
+    console.log("クラウド送信がオフのため、データは送信されませんでした。", data);
 }
 
 function clearForm() {
