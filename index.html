@@ -146,7 +146,7 @@ background:white;
 <th>名前</th>
 <th>期限</th>
 <th>残日数</th>
-<th></th>
+<th>操作</th>
 </tr>
 </thead>
 <tbody id="list"></tbody>
@@ -280,7 +280,6 @@ nextBox.innerHTML=""
 let list=patients.filter(p=>{
 
 let txt=(p.name+p.memo).toLowerCase()
-
 return txt.includes(search)
 
 })
@@ -308,6 +307,8 @@ else if(diff<=30)warn="warn30"
 
 let name=p.deform?p.name+"（変形徒手）":p.name
 
+let remain=diff<0 ? "期限切れ" : diff+"日"
+
 let tr=document.createElement("tr")
 
 if(diff<0)tr.classList.add("expired")
@@ -315,21 +316,22 @@ if(diff<0)tr.classList.add("expired")
 tr.innerHTML=`
 <td>${name}</td>
 <td>${exp.toLocaleDateString()}</td>
-<td class="${warn}">${diff}</td>
+<td class="${warn}">${remain}</td>
 <td>
 <button onclick="edit(${patients.indexOf(p)})">編集</button>
 <button onclick="del(${patients.indexOf(p)})">削除</button>
+<button onclick="addGoogle(${patients.indexOf(p)})">Google</button>
 </td>
 `
 
 tbody.appendChild(tr)
 
 if(exp.getMonth()==thisMonth){
-thisBox.innerHTML+=`<div onclick="scrollCalendar()">${name} ${exp.getDate()}</div>`
+thisBox.innerHTML+=`<div onclick="scrollCalendar()">${name} ${exp.getDate()}日</div>`
 }
 
 if(exp.getMonth()==nextMonth){
-nextBox.innerHTML+=`<div onclick="scrollCalendar()">${name} ${exp.getDate()}</div>`
+nextBox.innerHTML+=`<div onclick="scrollCalendar()">${name} ${exp.getDate()}日</div>`
 }
 
 })
@@ -346,6 +348,25 @@ cal.innerHTML=""
 
 let now=new Date()
 let year=now.getFullYear()
+
+let headers=["日","月","火","水","木","金","土"]
+
+headers.forEach(h=>{
+let head=document.createElement("div")
+head.style.fontWeight="bold"
+head.style.textAlign="center"
+head.innerText=h
+cal.appendChild(head)
+})
+
+let firstDay=new Date(year,month,1).getDay()
+
+for(let i=0;i<firstDay;i++){
+let empty=document.createElement("div")
+empty.className="day"
+empty.style.background="#f5f5f5"
+cal.appendChild(empty)
+}
 
 let last=new Date(year,month+1,0).getDate()
 
@@ -377,10 +398,7 @@ cal.appendChild(cell)
 }
 
 function scrollCalendar(){
-
-document.getElementById("calendarTop")
-.scrollIntoView({behavior:"smooth"})
-
+document.getElementById("calendarTop").scrollIntoView({behavior:"smooth"})
 }
 
 function edit(i){
@@ -395,8 +413,7 @@ document.getElementById("deform").checked=p.deform
 document.getElementById("notice").value=p.notice
 document.getElementById("memo").value=p.memo
 
-document.getElementById("consent")
-.scrollIntoView({behavior:"smooth"})
+document.getElementById("consent").scrollIntoView({behavior:"smooth"})
 
 }
 
@@ -409,6 +426,22 @@ localStorage.setItem("patients",JSON.stringify(patients))
 render()
 
 }
+
+}
+
+function addGoogle(i){
+
+let p=patients[i]
+
+let exp=new Date(p.expiry)
+
+let date=exp.toISOString().replace(/-|:|\.\d+/g,"")
+
+let title="同意書更新 "+p.name
+
+let url=`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${date}/${date}`
+
+window.open(url)
 
 }
 
