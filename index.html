@@ -108,23 +108,7 @@ font-size:14px;
 <button onclick="save()">保存</button>
 
 </div>
-<div class="card">
 
-<h3>翌月更新予定</h3>
-
-<table id="nextMonth">
-<thead>
-<tr>
-<th>名前</th>
-<th>更新期限</th>
-<th>残日数</th>
-</tr>
-</thead>
-<tbody></tbody>
-
-</table>
-
-</div>
 <div class="card">
 
 <h3>患者一覧</h3>
@@ -141,6 +125,23 @@ font-size:14px;
 </thead>
 <tbody></tbody>
 
+</table>
+
+</div>
+
+<div class="card">
+
+<h3>翌月更新予定</h3>
+
+<table id="nextMonth">
+<thead>
+<tr>
+<th>名前</th>
+<th>更新期限</th>
+<th>残日数</th>
+</tr>
+</thead>
+<tbody></tbody>
 </table>
 
 </div>
@@ -329,6 +330,42 @@ tbody.appendChild(tr)
 
 }
 
+function renderNextMonth(){
+
+let tbody=document.querySelector("#nextMonth tbody")
+
+tbody.innerHTML=""
+
+let nextMonth=new Date()
+nextMonth.setMonth(nextMonth.getMonth()+1)
+
+patients.forEach(p=>{
+
+let exp=new Date(p.expiry)
+
+if(
+exp.getMonth()==nextMonth.getMonth() &&
+exp.getFullYear()==nextMonth.getFullYear()
+){
+
+let diff=Math.ceil((exp-today)/(1000*60*60*24))
+
+let tr=document.createElement("tr")
+
+tr.innerHTML=`
+<td>${p.name}</td>
+<td>${exp.toLocaleDateString()}</td>
+<td>${diff}</td>
+`
+
+tbody.appendChild(tr)
+
+}
+
+})
+
+}
+
 function del(i){
 
 if(confirm("削除しますか？")){
@@ -338,6 +375,7 @@ patients.splice(i,1)
 localStorage.setItem("patients",JSON.stringify(patients))
 
 render()
+renderNextMonth()
 
 }
 
@@ -414,6 +452,7 @@ reader.readAsText(file)
 }
 
 render()
+renderNextMonth()
 
 </script>
 
