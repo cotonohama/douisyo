@@ -11,7 +11,7 @@ body{
 font-family:sans-serif;
 background:#f5f5f5;
 padding:20px;
-max-width:900px;
+max-width:1000px;
 margin:auto;
 }
 
@@ -66,6 +66,26 @@ border-radius:6px;
 margin-bottom:20px;
 }
 
+.calendar{
+display:grid;
+grid-template-columns:repeat(7,1fr);
+gap:5px;
+margin-top:10px;
+}
+
+.day{
+border:1px solid #ddd;
+min-height:60px;
+padding:4px;
+font-size:12px;
+background:white;
+}
+
+.dayHeader{
+font-weight:bold;
+text-align:center;
+}
+
 </style>
 
 </head>
@@ -81,6 +101,18 @@ margin-bottom:20px;
 
 <h3>来月更新</h3>
 <div id="nextMonth"></div>
+
+</div>
+
+<div class="card">
+
+<h3>更新カレンダー</h3>
+
+<h4>今月</h4>
+<div id="calendarThis" class="calendar"></div>
+
+<h4>来月</h4>
+<div id="calendarNext" class="calendar"></div>
 
 </div>
 
@@ -296,18 +328,56 @@ tr.innerHTML=`
 tbody.appendChild(tr)
 
 if(exp.getMonth()===thisMonth){
-
 thisMonthBox.innerHTML+=`${name}　${exp.toLocaleDateString()}<br>`
-
 }
 
 if(exp.getMonth()===nextMonth){
-
 nextMonthBox.innerHTML+=`${name}　${exp.toLocaleDateString()}<br>`
+}
+
+})
+
+renderCalendar(thisMonth,"calendarThis")
+renderCalendar(nextMonth,"calendarNext")
+
+}
+
+function renderCalendar(month,target){
+
+let cal=document.getElementById(target)
+cal.innerHTML=""
+
+let now=new Date()
+let year=now.getFullYear()
+
+let lastDay=new Date(year,month+1,0).getDate()
+
+for(let i=1;i<=lastDay;i++){
+
+let cell=document.createElement("div")
+cell.className="day"
+
+let date=new Date(year,month,i)
+
+cell.innerHTML=`<strong>${i}</strong><br>`
+
+patients.forEach(p=>{
+
+let exp=new Date(p.expiry)
+
+if(exp.getMonth()===month && exp.getDate()===i){
+
+let name=p.deform ? p.name+"（変形徒手）" : p.name
+
+cell.innerHTML+=name+"<br>"
 
 }
 
 })
+
+cal.appendChild(cell)
+
+}
 
 }
 
