@@ -59,6 +59,13 @@ gap:20px;
 margin-bottom:15px;
 }
 
+.updateBox{
+background:#fff7e6;
+padding:10px;
+border-radius:6px;
+margin-bottom:20px;
+}
+
 </style>
 
 </head>
@@ -66,6 +73,16 @@ margin-bottom:15px;
 <body>
 
 <h1>同意書管理</h1>
+
+<div class="card updateBox">
+
+<h3>今月更新</h3>
+<div id="thisMonth"></div>
+
+<h3>来月更新</h3>
+<div id="nextMonth"></div>
+
+</div>
 
 <div class="card">
 
@@ -83,10 +100,6 @@ margin-bottom:15px;
 <input type="date" id="first">
 
 <div class="checkbox-row">
-
-<label>
-<input type="checkbox" id="renewal"> 再同意
-</label>
 
 <label>
 <input type="checkbox" id="deform"> 変形徒手
@@ -124,7 +137,7 @@ margin-bottom:15px;
 
 <script>
 
-let patients = JSON.parse(localStorage.getItem("patients")||[])
+let patients = JSON.parse(localStorage.getItem("patients")||"[]")
 
 let today = new Date()
 
@@ -141,17 +154,13 @@ return d
 function calculateExpiry(consent,first,deform,isEdit){
 
 let base
-
 let consentDate=new Date(consent)
 
 if(isEdit){
 
-// 編集時 → 同意日基準
 base=consentDate
 
 }else{
-
-// 初回登録
 
 if(first){
 base=new Date(first)
@@ -199,7 +208,7 @@ alert("名前と同意日は必須です")
 return
 }
 
-let isEdit=idx!=="" 
+let isEdit=idx!==""
 
 let expiry=calculateExpiry(consent,first,deform,isEdit)
 
@@ -245,6 +254,17 @@ function render(){
 let tbody=document.querySelector("#list tbody")
 tbody.innerHTML=""
 
+let thisMonthBox=document.getElementById("thisMonth")
+let nextMonthBox=document.getElementById("nextMonth")
+
+thisMonthBox.innerHTML=""
+nextMonthBox.innerHTML=""
+
+let now=new Date()
+
+let thisMonth=now.getMonth()
+let nextMonth=thisMonth+1
+
 let list=patients.map((p,i)=>({...p,index:i}))
 
 list.sort((a,b)=>new Date(a.expiry)-new Date(b.expiry))
@@ -253,7 +273,9 @@ list.forEach(p=>{
 
 let exp=new Date(p.expiry)
 
-let diff=Math.ceil((exp-today)/(1000*60*60*24))
+let diff=Math.ceil((exp-now)/(1000*60*60*24))
+
+let name=p.deform ? p.name+"（変形徒手）" : p.name
 
 let tr=document.createElement("tr")
 
@@ -262,7 +284,7 @@ if(diff<0)tr.classList.add("expired")
 let red=diff<=p.notice?"red":""
 
 tr.innerHTML=`
-<td>${p.name}</td>
+<td>${name}</td>
 <td>${exp.toLocaleDateString()}</td>
 <td class="${red}">${diff}</td>
 <td>
@@ -272,6 +294,18 @@ tr.innerHTML=`
 `
 
 tbody.appendChild(tr)
+
+if(exp.getMonth()===thisMonth){
+
+thisMonthBox.innerHTML+=`${name}　${exp.toLocaleDateString()}<br>`
+
+}
+
+if(exp.getMonth()===nextMonth){
+
+nextMonthBox.innerHTML+=`${name}　${exp.toLocaleDateString()}<br>`
+
+}
 
 })
 
