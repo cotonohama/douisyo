@@ -62,6 +62,24 @@ gap:20px;
 margin-bottom:15px;
 }
 
+.calendar{
+display:grid;
+grid-template-columns:repeat(7,1fr);
+gap:5px;
+}
+
+.day{
+background:#fff;
+border:1px solid #ddd;
+min-height:70px;
+padding:5px;
+font-size:12px;
+}
+
+.day strong{
+display:block;
+}
+
 </style>
 
 </head>
@@ -73,7 +91,6 @@ margin-bottom:15px;
 <div class="card">
 
 <h3>患者検索</h3>
-
 <input id="search" placeholder="名前検索" oninput="render()">
 
 </div>
@@ -108,9 +125,6 @@ margin-bottom:15px;
 通知日数
 <input type="number" id="notice" value="30">
 
-更新（通院）予定日
-<input type="date" id="visit">
-
 メモ
 <textarea id="memo"></textarea>
 
@@ -132,8 +146,15 @@ margin-bottom:15px;
 </tr>
 </thead>
 <tbody></tbody>
-
 </table>
+
+</div>
+
+<div class="card">
+
+<h3>更新カレンダー</h3>
+
+<div id="calendar" class="calendar"></div>
 
 </div>
 
@@ -148,7 +169,7 @@ margin-bottom:15px;
 
 let patients = JSON.parse(localStorage.getItem("patients")||"[]")
 
-let today = new Date()
+let today=new Date()
 
 const consent=document.getElementById("consent")
 const first=document.getElementById("first")
@@ -160,27 +181,17 @@ first.min=consent.value
 })
 
 deform.addEventListener("change",()=>{
-if(deform.checked){
-notice.value=15
-}else{
-notice.value=30
-}
+notice.value=deform.checked?15:30
 })
 
 document.getElementById("renewal").addEventListener("change",()=>{
-
 if(document.getElementById("renewal").checked){
-
 first.disabled=true
 first.classList.add("gray")
-
 }else{
-
 first.disabled=false
 first.classList.remove("gray")
-
 }
-
 })
 
 function endOfMonth(d){
@@ -201,25 +212,17 @@ let firstDate=first?new Date(first):null
 let base
 
 if(renewal){
-
 base=consentDate
-
 }else{
 
 if(firstDate){
 
 let diff=(firstDate-consentDate)/(1000*60*60*24)
 
-if(diff>30){
-base=consentDate
-}else{
-base=firstDate
-}
+base=diff>30?consentDate:firstDate
 
 }else{
-
 base=consentDate
-
 }
 
 }
@@ -236,11 +239,9 @@ expiry.setDate(expiry.getDate()-1)
 
 let day=base.getDate()
 
-if(day<=15){
-expiry=endOfMonth(addMonths(base,5))
-}else{
-expiry=endOfMonth(addMonths(base,6))
-}
+expiry=day<=15
+?endOfMonth(addMonths(base,5))
+:endOfMonth(addMonths(base,6))
 
 }
 
@@ -258,7 +259,6 @@ let first=document.getElementById("first").value
 let renewal=document.getElementById("renewal").checked
 let deform=document.getElementById("deform").checked
 let notice=document.getElementById("notice").value
-let visit=document.getElementById("visit").value
 let memo=document.getElementById("memo").value
 
 if(!name||!consent){
@@ -268,7 +268,17 @@ return
 
 let expiry=calculateExpiry(consent,first,renewal,deform)
 
-let data={name,consent,first,renewal,deform,notice,visit,memo,expiry}
+let data={
+id: idx===""?Date.now():patients[idx].id,
+name,
+consent,
+first,
+renewal,
+deform,
+notice,
+memo,
+expiry
+}
 
 if(idx===""){
 patients.push(data)
@@ -289,11 +299,11 @@ tbody.innerHTML=""
 
 let keyword=document.getElementById("search").value
 
-let list=[...patients]
+let list=patients.map((p,i)=>({...p,index:i}))
 
 list.sort((a,b)=>new Date(a.expiry)-new Date(b.expiry))
 
-list.forEach((p,i)=>{
+list.forEach(p=>{
 
 if(keyword&&!p.name.includes(keyword))return
 
@@ -311,14 +321,17 @@ tr.innerHTML=`
 <td>${exp.toLocaleDateString()}</td>
 <td class="${red}">${diff}</td>
 <td>
-<button onclick="edit(${i})">編集</button>
-<button onclick="del(${i})">削除</button>
+<button onclick="edit(${p.index})">編集</button>
+<button onclick="del(${p.index})">削除</button>
+<button onclick="addCalendar('${p.name}','${exp.toISOString().split("T")[0]}')">📅</button>
 </td>
 `
 
 tbody.appendChild(tr)
 
 })
+
+renderCalendar()
 
 }
 
@@ -333,7 +346,6 @@ document.getElementById("first").value=p.first
 document.getElementById("renewal").checked=p.renewal
 document.getElementById("deform").checked=p.deform
 document.getElementById("notice").value=p.notice
-document.getElementById("visit").value=p.visit
 document.getElementById("memo").value=p.memo
 
 window.scrollTo(0,0)
@@ -354,12 +366,59 @@ render()
 
 }
 
-function exportCSV(){
+function addCalendar(name,date){
 
-let csv="name,consent,first,renewal,deform,notice,visit,memo\n"
+let url=`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${name} 同意書更新&dates=${date.replace(/-/g,"")}T090000/${date.replace(/-/g,"")}T100000`
+
+window.open(url)
+
+}
+
+function renderCalendar(){
+
+let cal=document.getElementById("calendar")
+cal.innerHTML=""
+
+let now=new Date()
+let year=now.getFullYear()
+let month=now.getMonth()
+
+let last=new Date(year,month+1,0).getDate()
+
+for(let i=1;i<=last;i++){
+
+let day=document.createElement("div")
+day.className="day"
+
+day.innerHTML=`<strong>${i}</strong>`
 
 patients.forEach(p=>{
-csv+=`${p.name},${p.consent},${p.first},${p.renewal},${p.deform},${p.notice},${p.visit},${p.memo}\n`
+
+let exp=new Date(p.expiry)
+
+if(exp.getDate()==i && exp.getMonth()==month){
+
+let div=document.createElement("div")
+div.textContent=p.name
+
+day.appendChild(div)
+
+}
+
+})
+
+cal.appendChild(day)
+
+}
+
+}
+
+function exportCSV(){
+
+let csv="name,consent,first,renewal,deform,notice,memo\n"
+
+patients.forEach(p=>{
+csv+=`${p.name},${p.consent},${p.first},${p.renewal},${p.deform},${p.notice},${p.memo}\n`
 })
 
 let blob=new Blob([csv])
@@ -392,14 +451,14 @@ let expiry=calculateExpiry(c[1],c[2],c[3]=="true",c[4]=="true")
 
 patients.push({
 
+id:Date.now()+Math.random(),
 name:c[0],
 consent:c[1],
 first:c[2],
 renewal:c[3]=="true",
 deform:c[4]=="true",
 notice:c[5],
-visit:c[6],
-memo:c[7],
+memo:c[6],
 expiry
 
 })
