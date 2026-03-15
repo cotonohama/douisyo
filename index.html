@@ -5,225 +5,182 @@
 <title>同意書管理</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
+<link rel="manifest" href="manifest.json">
+
 <style>
 
 body{
 font-family:sans-serif;
-max-width:720px;
-margin:auto;
-padding:20px;
 background:#f5f5f5;
+padding:20px;
+max-width:900px;
+margin:auto;
 }
 
-h1{text-align:center;}
-
-.formBox{
-background:#fff;
-padding:15px;
-border-radius:10px;
-border:1px solid #ddd;
+h1{
+text-align:center;
 }
 
-.editMode{
-background:#e3f2fd;
-border:2px solid #2196F3;
-}
-
-.notice{
-display:none;
-background:#ffebee;
-padding:12px;
-margin-bottom:10px;
-border-radius:8px;
-font-weight:bold;
-color:#c62828;
-}
-
-label{
-display:block;
-margin-top:10px;
-font-weight:bold;
-font-size:0.9em;
-}
-
-input,textarea{
+input,textarea,button{
 width:100%;
-padding:10px;
-margin-top:5px;
-box-sizing:border-box;
-}
-
-textarea{min-height:60px;}
-
-.checkbox-group{
-display:flex;
-gap:15px;
-margin-top:10px;
-}
-
-.checkbox{
-display:flex;
-align-items:center;
-gap:5px;
+padding:8px;
+margin:5px 0 15px 0;
+font-size:16px;
 }
 
 button{
-padding:10px;
-margin-top:10px;
 background:#4CAF50;
-color:#fff;
+color:white;
 border:none;
-border-radius:6px;
+border-radius:5px;
 cursor:pointer;
-width:100%;
+}
+
+button:hover{
+background:#45a049;
 }
 
 .card{
-border:1px solid #ddd;
+background:white;
 padding:15px;
-margin-top:10px;
-border-radius:10px;
-}
-
-.green{background:#e8f5e9;border-left:8px solid #4caf50;}
-.yellow{background:#fff9c4;border-left:8px solid #fbc02d;}
-.red{background:#ffcdd2;border-left:8px solid #f44336;}
-
-.small{
-font-size:0.85em;
-color:#555;
-margin-top:5px;
-border-top:1px dotted #ccc;
-padding-top:5px;
-}
-
-.filterButtons{
-display:flex;
-gap:10px;
-margin:15px 0;
-}
-
-.btn-edit{background:#2196F3;width:auto;padding:5px 15px;}
-.btn-delete{background:#f44336;width:auto;padding:5px 15px;margin-left:5px;}
-.btn-cal{background:#ff9800;width:auto;padding:5px 15px;margin-left:5px;}
-
-.schedule{
-background:#fff;
-padding:10px;
 border-radius:8px;
+margin-bottom:20px;
+}
+
+.red{
+color:red;
+font-weight:bold;
+}
+
+.gray{
+background:#eee;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+}
+
+th,td{
 border:1px solid #ddd;
-margin-top:10px;
+padding:6px;
+font-size:14px;
 }
 
 </style>
+
 </head>
 
 <body>
 
 <h1>同意書管理</h1>
 
-<div class="notice" id="editNotice"></div>
+<div class="card">
 
-<div class="formBox" id="formBox">
+<h3>患者登録</h3>
 
-<h3 id="formTitle">患者登録</h3>
+患者名
+<input id="name">
 
-<label>患者名</label>
-<input type="text" id="name">
-
-<label>同意日</label>
+同意日
 <input type="date" id="consent">
 
-<label>初療日（初回のみ使用）</label>
+初療日
 <input type="date" id="first">
 
-<div class="checkbox-group">
+<label>
+<input type="checkbox" id="renewal"> 再同意
+</label>
 
-<div class="checkbox">
-<input type="checkbox" id="renewal" onchange="toggleFirstDate()">
-<label for="renewal">再同意</label>
-</div>
+<label>
+<input type="checkbox" id="deform"> 変形徒手
+</label>
 
-<div class="checkbox">
-<input type="checkbox" id="deform">
-<label for="deform">変形徒手</label>
-</div>
+通知日数
+<input type="number" id="notice" value="30">
 
-</div>
+更新（通院）予定日
+<input type="date" id="visit">
 
-<label>通知日数</label>
-<input type="number" id="alertDays" value="14">
-
-<label>次回更新予定日</label>
-<input type="date" id="planDate">
-
-<label>メモ</label>
+メモ
 <textarea id="memo"></textarea>
 
-<button id="saveBtn" onclick="savePatient()">保存する</button>
-
-<button onclick="exportCSV()">CSVバックアップ</button>
-
-<input type="file" id="csvImport" style="display:none" onchange="importCSV(event)">
-<button onclick="document.getElementById('csvImport').click()">CSV復元</button>
+<button onclick="save()">保存</button>
 
 </div>
 
-<h3>検索</h3>
-
-<input type="text" id="search" placeholder="患者名で検索" oninput="render()">
-
-<div class="filterButtons">
-
-<button onclick="showAll()">全患者</button>
-<button onclick="showThisMonth()">今月更新</button>
-<button onclick="showNextMonth()">翌月更新</button>
-
-</div>
-
-<button onclick="addMonthToCalendar()">📅 今月更新をカレンダー登録</button>
-
-<h3>更新スケジュール</h3>
-
-<div id="schedule" class="schedule"></div>
+<div class="card">
 
 <h3>患者一覧</h3>
 
-<div id="list"></div>
+<table id="list">
+<thead>
+<tr>
+<th>名前</th>
+<th>同意日</th>
+<th>期限</th>
+<th>残日数</th>
+<th>編集</th>
+</tr>
+</thead>
+<tbody></tbody>
+
+</table>
+
+</div>
+
+<div class="card">
+
+<button onclick="exportCSV()">CSVバックアップ</button>
+<input type="file" onchange="importCSV(event)">
+
+</div>
 
 <script>
 
-let patients = JSON.parse(localStorage.getItem("patients") || "[]")
+let patients = JSON.parse(localStorage.getItem("patients")||"[]")
 
-let editIndex=-1
-let filterMode="all"
+let today = new Date()
 
-function toggleFirstDate(){
+document.getElementById("consent").max = today.toISOString().split("T")[0]
 
-let renewal=document.getElementById("renewal").checked
-let first=document.getElementById("first")
+document.getElementById("renewal").addEventListener("change",()=>{
 
-first.disabled=renewal
+let first = document.getElementById("first")
+
+if(document.getElementById("renewal").checked){
+
+first.disabled=true
+first.classList.add("gray")
+
+}else{
+
+first.disabled=false
+first.classList.remove("gray")
 
 }
 
-const todayStr=new Date().toISOString().split("T")[0]
-document.getElementById("consent").setAttribute("max",todayStr)
+})
 
-function endOfMonth(date){
-return new Date(date.getFullYear(),date.getMonth()+1,0)
+function endOfMonth(d){
+
+return new Date(d.getFullYear(),d.getMonth()+1,0)
+
 }
 
 function addMonths(date,m){
+
 let d=new Date(date)
 d.setMonth(d.getMonth()+m)
 return d
+
 }
 
-function calculateExpiry(consent, first, renewal, deform){
+function calculateExpiry(consent,first,renewal,deform){
 
 let consentDate = new Date(consent)
 let firstDate = first ? new Date(first) : null
+
 let base
 
 if(renewal){
@@ -234,13 +191,21 @@ base = consentDate
 
 if(firstDate){
 
-let diff = (firstDate - consentDate)/(1000*60*60*24)
+let diff = (firstDate-consentDate)/(1000*60*60*24)
 
-base = diff>30 ? consentDate : firstDate
+if(diff>30){
+
+base=consentDate
 
 }else{
 
-base = consentDate
+base=firstDate
+
+}
+
+}else{
+
+base=consentDate
 
 }
 
@@ -259,9 +224,13 @@ expiry.setDate(expiry.getDate()-1)
 let day=base.getDate()
 
 if(day<=15){
+
 expiry=endOfMonth(addMonths(base,5))
+
 }else{
+
 expiry=endOfMonth(addMonths(base,6))
+
 }
 
 }
@@ -270,303 +239,83 @@ return expiry
 
 }
 
-function daysLeft(date){
-
-let today=new Date()
-today.setHours(0,0,0,0)
-
-return Math.floor((date-today)/(1000*60*60*24))
-
-}
-
-function getColor(days,alertDays){
-
-if(days<=alertDays)return"red"
-if(days<=60)return"yellow"
-
-return"green"
-
-}
-
-function savePatient(){
+function save(){
 
 let name=document.getElementById("name").value
+
 let consent=document.getElementById("consent").value
+
 let first=document.getElementById("first").value
+
 let renewal=document.getElementById("renewal").checked
+
 let deform=document.getElementById("deform").checked
-let alertDays=parseInt(document.getElementById("alertDays").value)||14
+
+let notice=document.getElementById("notice").value
+
+let visit=document.getElementById("visit").value
+
 let memo=document.getElementById("memo").value
-let planDate=document.getElementById("planDate").value
 
 if(!name||!consent){
-alert("患者名と同意日を入力してください")
+
+alert("名前と同意日は必須です")
 return
 }
 
-let data={name,consent,first,renewal,deform,alertDays,memo,planDate}
+let expiry=calculateExpiry(consent,first,renewal,deform)
 
-if(editIndex>=0){
-patients[editIndex]=data
-}else{
-patients.push(data)
-}
+patients.push({
+name,
+consent,
+first,
+renewal,
+deform,
+notice,
+visit,
+memo,
+expiry
+})
 
 localStorage.setItem("patients",JSON.stringify(patients))
 
-clearForm()
-render()
-
-}
-
-function clearForm(){
-
-document.getElementById("name").value=""
-document.getElementById("consent").value=""
-document.getElementById("first").value=""
-document.getElementById("renewal").checked=false
-document.getElementById("deform").checked=false
-document.getElementById("alertDays").value=14
-document.getElementById("memo").value=""
-document.getElementById("planDate").value=""
-
-document.getElementById("first").disabled=false
-
-document.getElementById("editNotice").style.display="none"
-document.getElementById("formBox").classList.remove("editMode")
-
-editIndex=-1
+location.reload()
 
 }
 
 function render(){
 
-let list=document.getElementById("list")
-list.innerHTML=""
+let tbody=document.querySelector("#list tbody")
 
-let keyword=document.getElementById("search").value.toLowerCase()
-
-let filtered=patients.filter(p=>{
-
-if(keyword && !p.name.toLowerCase().includes(keyword))return false
-
-if(filterMode==="month"){
-
-let expiry=calculateExpiry(p.consent,p.first,p.renewal,p.deform)
-let now=new Date()
-
-return expiry.getMonth()===now.getMonth()
-
-}
-
-if(filterMode==="next"){
-
-let expiry=calculateExpiry(p.consent,p.first,p.renewal,p.deform)
-let now=new Date()
-
-return expiry.getMonth()===(now.getMonth()+1)%12
-
-}
-
-return true
-
-})
-
-filtered.sort((a,b)=>calculateExpiry(a.consent,a.first,a.renewal,a.deform)-calculateExpiry(b.consent,b.first,b.renewal,b.deform))
-
-filtered.forEach(p=>{
-
-let realIndex=patients.indexOf(p)
-
-let expiry=calculateExpiry(p.consent,p.first,p.renewal,p.deform)
-
-let days=daysLeft(expiry)
-
-let color=getColor(days,p.alertDays)
-
-let card=document.createElement("div")
-
-card.className="card "+color
-
-card.innerHTML=`
-
-<b>${p.name}</b><br>
-
-同意期限 ${expiry.toLocaleDateString("ja-JP")}<br>
-
-残り ${days}日
-
-${p.memo?`<div class="small">${p.memo}</div>`:""}
-
-<div style="margin-top:10px">
-
-<button class="btn-edit" onclick="editPatient(${realIndex})">編集</button>
-
-<button class="btn-delete" onclick="deletePatient(${realIndex})">削除</button>
-
-<button class="btn-cal" onclick="addToCalendar(${realIndex})">📅</button>
-
-</div>
-
-`
-
-list.appendChild(card)
-
-})
-
-renderSchedule()
-
-}
-
-function renderSchedule(){
-
-let schedule=document.getElementById("schedule")
-schedule.innerHTML=""
-
-let list=[...patients]
-
-list.sort((a,b)=>calculateExpiry(a.consent,a.first,a.renewal,a.deform)-calculateExpiry(b.consent,b.first,b.renewal,b.deform))
-
-list.forEach(p=>{
-
-let expiry=calculateExpiry(p.consent,p.first,p.renewal,p.deform)
-
-let item=document.createElement("div")
-
-item.innerHTML=`${expiry.toLocaleDateString("ja-JP",{month:"numeric",day:"numeric"})}　${p.name}`
-
-schedule.appendChild(item)
-
-})
-
-}
-
-function addToCalendar(i){
-
-let p=patients[i]
-
-let expiry=calculateExpiry(p.consent,p.first,p.renewal,p.deform)
-
-let date=expiry.toISOString().split("T")[0].replace(/-/g,"")
-
-let url="https://calendar.google.com/calendar/render?action=TEMPLATE&text="+encodeURIComponent("同意書更新："+p.name)+"&dates="+date+"/"+date
-
-window.open(url)
-
-}
-
-function addMonthToCalendar(){
-
-let now=new Date()
+tbody.innerHTML=""
 
 patients.forEach((p,i)=>{
 
-let expiry=calculateExpiry(p.consent,p.first,p.renewal,p.deform)
+let exp=new Date(p.expiry)
 
-if(expiry.getMonth()===now.getMonth()){
+let diff=Math.ceil((exp-today)/(1000*60*60*24))
 
-setTimeout(()=>addToCalendar(i),i*800)
+let tr=document.createElement("tr")
 
-}
+let red = diff <= 10 ? "red":""
 
-})
+tr.innerHTML=`
+<td>${p.name}</td>
+<td>${p.consent}</td>
+<td>${exp.toLocaleDateString()}</td>
+<td class="${red}">${diff}</td>
+<td><button onclick="del(${i})">削除</button></td>
+`
 
-}
-
-function exportCSV(){
-
-let rows=[["name","consent","first","renewal","deform","alertDays","memo","planDate"]]
-
-patients.forEach(p=>{
-rows.push([p.name,p.consent,p.first,p.renewal,p.deform,p.alertDays,p.memo,p.planDate])
-})
-
-let csv=rows.map(r=>r.join(",")).join("\n")
-
-let blob=new Blob([csv],{type:"text/csv"})
-
-let link=document.createElement("a")
-
-link.href=URL.createObjectURL(blob)
-
-link.download="patients_backup.csv"
-
-link.click()
-
-}
-
-function importCSV(event){
-
-let file=event.target.files[0]
-
-let reader=new FileReader()
-
-reader.onload=function(e){
-
-let lines=e.target.result.split("\n").slice(1)
-
-patients=lines.filter(l=>l).map(l=>{
-
-let c=l.split(",")
-
-return{
-
-name:c[0],
-consent:c[1],
-first:c[2],
-renewal:c[3]==="true",
-deform:c[4]==="true",
-alertDays:parseInt(c[5]),
-memo:c[6],
-planDate:c[7]
-
-}
+tbody.appendChild(tr)
 
 })
 
-localStorage.setItem("patients",JSON.stringify(patients))
-
-render()
-
 }
 
-reader.readAsText(file)
+function del(i){
 
-}
-
-function showAll(){filterMode="all";render()}
-function showThisMonth(){filterMode="month";render()}
-function showNextMonth(){filterMode="next";render()}
-
-function editPatient(i){
-
-let p=patients[i]
-
-document.getElementById("name").value=p.name
-document.getElementById("consent").value=p.consent
-document.getElementById("first").value=p.first
-document.getElementById("renewal").checked=p.renewal
-document.getElementById("deform").checked=p.deform
-document.getElementById("alertDays").value=p.alertDays
-document.getElementById("memo").value=p.memo
-document.getElementById("planDate").value=p.planDate
-
-toggleFirstDate()
-
-document.getElementById("editNotice").innerText="編集中："+p.name
-document.getElementById("editNotice").style.display="block"
-
-document.getElementById("formBox").classList.add("editMode")
-
-window.scrollTo({top:0,behavior:"smooth"})
-
-editIndex=i
-
-}
-
-function deletePatient(i){
-
-if(!confirm("削除しますか？"))return
+if(confirm("削除しますか？")){
 
 patients.splice(i,1)
 
@@ -576,8 +325,86 @@ render()
 
 }
 
+}
+
+function exportCSV(){
+
+let csv="name,consent,first,renewal,deform,notice,visit,memo\n"
+
+patients.forEach(p=>{
+
+csv+=`${p.name},${p.consent},${p.first},${p.renewal},${p.deform},${p.notice},${p.visit},${p.memo}\n`
+
+})
+
+let blob=new Blob([csv])
+
+let a=document.createElement("a")
+
+a.href=URL.createObjectURL(blob)
+
+a.download="backup.csv"
+
+a.click()
+
+}
+
+function importCSV(e){
+
+let file=e.target.files[0]
+
+let reader=new FileReader()
+
+reader.onload=function(){
+
+let rows=reader.result.split("\n")
+
+patients=[]
+
+rows.slice(1).forEach(r=>{
+
+let c=r.split(",")
+
+if(c[0]){
+
+let expiry=calculateExpiry(c[1],c[2],c[3]=="true",c[4]=="true")
+
+patients.push({
+
+name:c[0],
+consent:c[1],
+first:c[2],
+renewal:c[3]=="true",
+deform:c[4]=="true",
+notice:c[5],
+visit:c[6],
+memo:c[7],
+expiry
+
+})
+
+}
+
+})
+
+localStorage.setItem("patients",JSON.stringify(patients))
+
+location.reload()
+
+}
+
+reader.readAsText(file)
+
+}
+
 render()
 
+</script>
+
+<script>
+if ("serviceWorker" in navigator) {
+navigator.serviceWorker.register("sw.js");
+}
 </script>
 
 </body>
