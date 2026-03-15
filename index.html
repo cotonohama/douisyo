@@ -36,10 +36,6 @@ border-radius:5px;
 cursor:pointer;
 }
 
-button:hover{
-background:#45a049;
-}
-
 .card{
 background:white;
 padding:15px;
@@ -50,6 +46,10 @@ margin-bottom:20px;
 .red{
 color:red;
 font-weight:bold;
+}
+
+.expired{
+background:#ffdddd;
 }
 
 .gray{
@@ -74,6 +74,14 @@ font-size:14px;
 <body>
 
 <h1>同意書管理</h1>
+
+<div class="card">
+
+<h3>患者検索</h3>
+
+<input id="search" placeholder="名前検索" oninput="render()">
+
+</div>
 
 <div class="card">
 
@@ -117,14 +125,12 @@ font-size:14px;
 <thead>
 <tr>
 <th>名前</th>
-<th>同意日</th>
 <th>期限</th>
 <th>残日数</th>
-<th>編集</th>
+<th>削除</th>
 </tr>
 </thead>
 <tbody></tbody>
-
 </table>
 
 </div>
@@ -137,7 +143,7 @@ font-size:14px;
 <thead>
 <tr>
 <th>名前</th>
-<th>更新期限</th>
+<th>期限</th>
 <th>残日数</th>
 </tr>
 </thead>
@@ -180,17 +186,13 @@ first.classList.remove("gray")
 })
 
 function endOfMonth(d){
-
 return new Date(d.getFullYear(),d.getMonth()+1,0)
-
 }
 
 function addMonths(date,m){
-
 let d=new Date(date)
 d.setMonth(d.getMonth()+m)
 return d
-
 }
 
 function calculateExpiry(consent,first,renewal,deform){
@@ -211,19 +213,13 @@ if(firstDate){
 let diff = (firstDate-consentDate)/(1000*60*60*24)
 
 if(diff>30){
-
 base=consentDate
-
 }else{
-
 base=firstDate
-
 }
 
 }else{
-
 base=consentDate
-
 }
 
 }
@@ -241,13 +237,9 @@ expiry.setDate(expiry.getDate()-1)
 let day=base.getDate()
 
 if(day<=15){
-
 expiry=endOfMonth(addMonths(base,5))
-
 }else{
-
 expiry=endOfMonth(addMonths(base,6))
-
 }
 
 }
@@ -259,25 +251,19 @@ return expiry
 function save(){
 
 let name=document.getElementById("name").value
-
 let consent=document.getElementById("consent").value
-
 let first=document.getElementById("first").value
-
 let renewal=document.getElementById("renewal").checked
-
 let deform=document.getElementById("deform").checked
-
 let notice=document.getElementById("notice").value
-
 let visit=document.getElementById("visit").value
-
 let memo=document.getElementById("memo").value
 
 if(!name||!consent){
 
 alert("名前と同意日は必須です")
 return
+
 }
 
 let expiry=calculateExpiry(consent,first,renewal,deform)
@@ -303,22 +289,31 @@ location.reload()
 function render(){
 
 let tbody=document.querySelector("#list tbody")
-
 tbody.innerHTML=""
 
-patients.forEach((p,i)=>{
+let keyword=document.getElementById("search").value
+
+let list=[...patients]
+
+list.sort((a,b)=> new Date(a.expiry)-new Date(b.expiry))
+
+list.forEach((p,i)=>{
+
+if(keyword && !p.name.includes(keyword)) return
 
 let exp=new Date(p.expiry)
-
 let diff=Math.ceil((exp-today)/(1000*60*60*24))
 
 let tr=document.createElement("tr")
 
-let red = diff <= 10 ? "red":""
+if(diff<0){
+tr.classList.add("expired")
+}
+
+let red = diff <= p.notice ? "red":""
 
 tr.innerHTML=`
 <td>${p.name}</td>
-<td>${p.consent}</td>
 <td>${exp.toLocaleDateString()}</td>
 <td class="${red}">${diff}</td>
 <td><button onclick="del(${i})">削除</button></td>
@@ -328,12 +323,13 @@ tbody.appendChild(tr)
 
 })
 
+renderNextMonth()
+
 }
 
 function renderNextMonth(){
 
 let tbody=document.querySelector("#nextMonth tbody")
-
 tbody.innerHTML=""
 
 let nextMonth=new Date()
@@ -375,7 +371,6 @@ patients.splice(i,1)
 localStorage.setItem("patients",JSON.stringify(patients))
 
 render()
-renderNextMonth()
 
 }
 
@@ -452,7 +447,6 @@ reader.readAsText(file)
 }
 
 render()
-renderNextMonth()
 
 </script>
 
