@@ -2,16 +2,15 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>同意書管理システム (Sync Fixed)</title>
+    <title>同意書管理システム (Kotonoha v5.0 Full)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         :root { --main-color: #2e7d32; --sub-color: #e8f5e9; }
         body{font-family:sans-serif;background:#f0f2f0;padding:10px;max-width:1000px;margin:auto;color:#333;line-height:1.4;}
         h1{text-align:center;color:var(--main-color);margin-bottom:5px;}
         .version{text-align:center;font-size:11px;color:#888;margin-bottom:15px;}
         .card{background:white;padding:15px;border-radius:10px;margin-bottom:15px;box-shadow:0 3px 10px rgba(0,0,0,0.1);border:1px solid #ddd;}
-        
-        /* 入力エリア */
         label{font-size:13px; font-weight:bold; color:#555;}
         input,textarea,select,button{width:100%;padding:12px;margin:5px 0 12px 0;font-size:16px;box-sizing:border-box;border-radius:6px;border:1px solid #ccc;}
         button{background:var(--main-color);color:white;border:none;cursor:pointer;font-weight:bold;transition:0.2s;}
@@ -37,46 +36,45 @@
         .bg-orange { background: #ffab40; }
         .bg-yellow { background: #ffd740; }
 
-        /* カレンダー */
+        /* カレンダー・サマリー */
         .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px; background:#eee; border:1px solid #ddd;}
         .day{background:white;min-height:80px;padding:4px;font-size:11px;}
         .day b{font-size:14px; color:#666;}
         .flex{display:flex;gap:10px;flex-wrap:wrap;}
         .summary-box { background:var(--sub-color); padding:10px; border-radius:5px; flex:1; min-width:150px; border:1px solid #c8e6c9;}
 
-        /* 同期エリア表示 */
-        #syncResultArea { 
-            display: none; 
-            margin-top: 15px; 
-            padding: 15px; 
-            border: 2px solid #06C755; 
-            border-radius: 10px; 
-            background: #f9fff9;
-            text-align: center;
-        }
-        #syncURLText { font-size: 10px; background: #eee; padding: 5px; word-break: break-all; margin: 10px 0; border: 1px solid #ccc; max-height: 60px; overflow-y: auto;}
+        /* 同期パネル */
+        #syncPanel { display: none; margin-top: 15px; padding: 15px; border: 2px solid #06C755; border-radius: 10px; background: #f9fff9; text-align: center; }
+        #qrWrapper, #urlWrapper { display: none; margin: 15px 0; }
+        #qrcode { display: flex; justify-content: center; margin-top: 10px; }
+        #urlBox { font-size: 10px; background: #eee; padding: 8px; word-break: break-all; border: 1px solid #ccc; width: 100%; height: 60px; resize: none; box-sizing: border-box;}
     </style>
 </head>
 <body>
 
 <h1>同意書管理システム</h1>
-<div class="version">Kotonoha Edition v4.6 (Sync Reliability Fix)</div>
+<div class="version">Kotonoha Edition v5.0 (Full Logic Restored)</div>
 
 <details class="card">
-    <summary style="cursor:pointer; font-weight:bold; color:var(--main-color);">🔄 同期・設定・バックアップ</summary>
+    <summary style="cursor:pointer; font-weight:bold; color:var(--main-color);">🔄 同期・バックアップ・高度な設定</summary>
     <div style="margin-top:10px;">
-        <button onclick="requestNotify()" class="btn-blue">🔔 通知設定を有効にする</button>
+        <button onclick="requestNotify()" class="btn-blue">🔔 ブラウザ通知を有効にする</button>
         
         <div class="flex">
-            <button onclick="handleQRClick()" class="btn-sync" style="flex:1;">📱 スマホ同期用QR表示</button>
-            <button onclick="handleURLClick()" class="btn-sync" style="flex:1;">🔗 同期URLをコピー</button>
+            <button onclick="displayQR()" class="btn-sync" style="flex:1;">📱 スマホ同期用QRを表示</button>
+            <button onclick="copyURL()" class="btn-sync" style="flex:1;">🔗 同期URLをコピー</button>
         </div>
 
-        <div id="syncResultArea">
-            <div id="qrImage"></div>
-            <p style="font-size:12px; font-weight:bold; margin-top:10px;">発行された同期URL:</p>
-            <div id="syncURLText"></div>
-            <button onclick="document.getElementById('syncResultArea').style.display='none'" style="background:#888; padding:5px; font-size:12px; width:auto; margin-top:5px;">閉じる</button>
+        <div id="syncPanel">
+            <div id="qrWrapper">
+                <p style="font-size:12px; font-weight:bold;">スマホで読み取ってください</p>
+                <div id="qrcode"></div>
+            </div>
+            <div id="urlWrapper">
+                <p style="font-size:11px; font-weight:bold; color:#2e7d32;">URLをコピーしました</p>
+                <textarea id="urlBox" readonly></textarea>
+            </div>
+            <button onclick="closeSync()" style="background:#888; padding:5px; font-size:12px; width:auto; margin-top:10px;">パネルを閉じる</button>
         </div>
         
         <div class="flex" style="margin-top:10px;">
@@ -134,6 +132,7 @@
 let db = JSON.parse(localStorage.getItem("kotonoha_db") || "[]");
 let notifiedSessions = [];
 
+// --- A. 初期化と同期データ処理 ---
 window.onload = function() {
     const params = new URLSearchParams(window.location.search);
     const data = params.get('data');
@@ -147,11 +146,12 @@ window.onload = function() {
         } catch (e) { alert("同期データが正しくありません"); }
     }
     render();
+    setInterval(checkNotify, 3600000); // 1時間おきに通知チェック
 };
 
 function saveRaw() { localStorage.setItem("kotonoha_db", JSON.stringify(db)); render(); }
 
-// --- バックアップ (3世代) ---
+// --- B. バックアップ・復元ロジック ---
 function backup() {
     const cur = localStorage.getItem("kotonoha_db");
     const b1 = localStorage.getItem("k_bak1");
@@ -168,68 +168,25 @@ function restore() {
     } else { alert("復元データがありません"); }
 }
 
-// --- 同期URL生成の基幹 (文字数チェック付) ---
-function getSyncFullURL() {
-    if (db.length === 0) { alert("データが0件のため同期できません。先に患者を登録してください。"); return null; }
-    try {
-        const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(db))));
-        return window.location.origin + window.location.pathname + "?data=" + encoded;
-    } catch (e) {
-        alert("データ変換に失敗しました。特殊な文字が含まれている可能性があります。");
-        return null;
-    }
-}
-
-// --- 同期URLコピーボタンの挙動 ---
-function handleURLClick() {
-    const url = getSyncFullURL();
-    if (!url) return;
-    
-    // クリップボードにコピー
-    navigator.clipboard.writeText(url).then(() => {
-        alert("同期用URLをクリップボードにコピーしました。LINEや自分宛メールに貼り付けて送信してください。");
-        document.getElementById("syncResultArea").style.display = "block";
-        document.getElementById("syncURLText").innerText = url;
-        document.getElementById("qrImage").innerHTML = ""; // URLコピー時はQRは隠すかクリア
-    });
-}
-
-// --- QRコード表示ボタンの挙動 ---
-function handleQRClick() {
-    const url = getSyncFullURL();
-    if (!url) return;
-    
-    if (url.length > 2000) {
-        alert("患者数が多すぎてQRコードに変換できません（約20人以上目安）。\n「JSON共有」か「同期URLコピー」を利用してください。");
-        return;
-    }
-
-    const qrImageArea = document.getElementById("qrImage");
-    qrImageArea.innerHTML = `<img src="https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encodeURIComponent(url)}&choe=UTF-8" alt="Sync QR">`;
-    document.getElementById("syncURLText").innerText = url;
-    document.getElementById("syncResultArea").style.display = "block";
-    document.getElementById("syncResultArea").scrollIntoView({behavior: "smooth"});
-}
-
-// --- 計算ロジック (斎藤さんの現場ルール厳守) ---
+// --- C. 同意期限の計算ルール遵守事項 ---
 function getExpiry(consentDate, firstDate, isDeform, isEdit) {
     let base = (isEdit || !firstDate) ? new Date(consentDate) : new Date(firstDate);
     if (isDeform) {
         let d = new Date(base); d.setMonth(d.getMonth() + 1); d.setDate(d.getDate() - 1);
         return d;
     } else {
+        // 15日ルール: 15日以前なら6ヶ月末、16日以降なら7ヶ月末
         return (base.getDate() <= 15) 
             ? new Date(base.getFullYear(), base.getMonth() + 6, 0) 
             : new Date(base.getFullYear(), base.getMonth() + 7, 0);
     }
 }
 
-// --- 保存処理 ---
+// --- D. 保存・編集・削除 ---
 function save() {
     const name = document.getElementById("name").value;
     const consent = document.getElementById("consent").value;
     if (!name || !consent) { alert("名前と同意日は必須です"); return; }
-
     backup();
     const idx = document.getElementById("editIdx").value;
     const isEdit = (idx !== "");
@@ -244,17 +201,31 @@ function save() {
         memo: document.getElementById("memo").value || "",
         expiry: expiry.toISOString()
     };
-
     if (isEdit) db[idx] = data; else db.push(data);
-    
-    saveRaw(); clearForm();
-    document.getElementById("search").value = "";
-    document.getElementById("filter").value = "all";
-    render();
+    saveRaw(); clearForm(); render();
     alert("保存しました。");
 }
 
-// --- 描画処理 ---
+function edit(i) {
+    const p = db[i]; document.getElementById("editIdx").value = i;
+    document.getElementById("name").value = p.name; document.getElementById("consent").value = p.consent;
+    document.getElementById("first").value = p.first || ""; document.getElementById("deform").checked = p.deform;
+    document.getElementById("notice").value = p.notice; document.getElementById("memo").value = p.memo;
+    document.getElementById("formTitle").innerText = "編集: " + p.name; document.getElementById("saveBtn").innerText = "変更を保存";
+    document.getElementById("formArea").scrollIntoView({behavior: "smooth"});
+}
+
+function del(i) { if(confirm(db[i].name + " 様を削除しますか？")) { backup(); db.splice(i,1); saveRaw(); } }
+
+function clearForm() {
+    document.getElementById("editIdx").value = "";
+    document.getElementById("name").value = ""; document.getElementById("consent").value = "";
+    document.getElementById("first").value = ""; document.getElementById("deform").checked = false;
+    document.getElementById("memo").value = ""; document.getElementById("formTitle").innerText = "患者登録 / 編集";
+    document.getElementById("saveBtn").innerText = "保存して一覧を更新";
+}
+
+// --- E. 描画・一覧・サマリー ---
 function render() {
     const listBody = document.getElementById("pList");
     listBody.innerHTML = "";
@@ -275,14 +246,12 @@ function render() {
                                           : (d.getFullYear() === nY && d.getMonth() === nM);
         });
     }
-
     filtered.sort((a,b) => new Date(a.expiry) - new Date(b.expiry));
 
     filtered.forEach(p => {
         const exp = new Date(p.expiry);
         const diff = Math.ceil((exp - now) / (1000*60*60*24));
         const color = diff <= 7 ? "bg-red" : diff <= 14 ? "bg-orange" : diff <= 30 ? "bg-yellow" : "";
-        
         const tr = document.createElement("tr");
         if (diff < 0) tr.className = "expired";
         tr.innerHTML = `
@@ -300,7 +269,6 @@ function render() {
         if(exp.getFullYear()===tY && exp.getMonth()===tM) sumT.innerHTML += `<div>● ${p.name}</div>`;
         if(exp.getFullYear()===nY && exp.getMonth()===nM) sumN.innerHTML += `<div>● ${p.name}</div>`;
     });
-
     drawCalendar(tY, tM, "cal1", "calLabel1");
     drawCalendar(nY, nM, "cal2", "calLabel2");
     checkNotify();
@@ -325,11 +293,21 @@ function drawCalendar(y, m, targetId, labelId) {
     }
 }
 
-// --- JSON共有・インポート ---
+// --- F. Googleカレンダー・共有・CSV ---
+function goGoogle(i) {
+    const p = db[i]; const ed = new Date(p.expiry);
+    const nD = new Date(ed); nD.setDate(nD.getDate() - (p.notice || 7));
+    const dStr = d => d.toISOString().replace(/-|:|\.\d+/g, "").split("T")[0];
+    const url = (txt, date) => `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(p.name + txt)}&dates=${dStr(date)}/${dStr(date)}`;
+    if(confirm("準備日と期限日の2つを登録しますか？")){
+        window.open(url("様 再同意準備", nD), '_blank');
+        setTimeout(() => window.open(url("様 同意期限", ed), '_blank'), 500);
+    }
+}
+
 async function shareJSON() {
     const jsonStr = JSON.stringify(db, null, 2);
-    const fileName = `kotonoha_${new Date().getTime()}.json`;
-    const f = new File([jsonStr], fileName, {type: 'application/json'});
+    const f = new File([jsonStr], `kotonoha_${Date.now()}.json`, {type: 'application/json'});
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [f] })) {
         try { await navigator.share({ files: [f], title: 'ことのは 同意書データ' }); } catch (err) { downloadJSON(); }
     } else { downloadJSON(); }
@@ -338,7 +316,7 @@ async function shareJSON() {
 function downloadJSON() {
     const blob = new Blob([JSON.stringify(db, null, 2)], {type: 'application/json'});
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-    a.download = `kotonoha_${new Date().getTime()}.json`; a.click();
+    a.download = `kotonoha_${Date.now()}.json`; a.click();
 }
 
 function importData(e) {
@@ -354,37 +332,6 @@ function importData(e) {
     r.readAsText(e.target.files[0]);
 }
 
-// --- その他基本機能 ---
-function edit(i) {
-    const p = db[i]; document.getElementById("editIdx").value = i;
-    document.getElementById("name").value = p.name; document.getElementById("consent").value = p.consent;
-    document.getElementById("first").value = p.first || ""; document.getElementById("deform").checked = p.deform;
-    document.getElementById("notice").value = p.notice; document.getElementById("memo").value = p.memo;
-    document.getElementById("formTitle").innerText = "編集: " + p.name; document.getElementById("saveBtn").innerText = "変更を保存";
-    document.getElementById("formArea").scrollIntoView({behavior: "smooth"});
-}
-
-function del(i) { if(confirm(db[i].name + " 様を削除しますか？")) { backup(); db.splice(i,1); saveRaw(); } }
-
-function clearForm() {
-    document.getElementById("editIdx").value = "";
-    document.getElementById("name").value = ""; document.getElementById("consent").value = "";
-    document.getElementById("first").value = ""; document.getElementById("deform").checked = false;
-    document.getElementById("memo").value = ""; document.getElementById("formTitle").innerText = "患者登録 / 編集";
-    document.getElementById("saveBtn").innerText = "保存して一覧を更新";
-}
-
-function goGoogle(i) {
-    const p = db[i]; const ed = new Date(p.expiry);
-    const nD = new Date(ed); nD.setDate(nD.getDate() - (p.notice || 7));
-    const dStr = d => d.toISOString().replace(/-|:|\.\d+/g, "").split("T")[0];
-    const url = (txt, date) => `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(p.name + txt)}&dates=${dStr(date)}/${dStr(date)}`;
-    if(confirm("準備日と期限日の2つを登録しますか？")){
-        window.open(url("様 再同意準備", nD), '_blank');
-        setTimeout(() => window.open(url("様 同意期限", ed), '_blank'), 500);
-    }
-}
-
 function exportCSV() {
     let csv = "\uFEFF名前,同意日,初療日,変形,期限,メモ\n";
     db.forEach(p => csv += `${p.name},${p.consent},${p.first||""},${p.deform?"あり":""},${new Date(p.expiry).toLocaleDateString()},${p.memo.replace(/\n/g," ")}\n`);
@@ -392,6 +339,40 @@ function exportCSV() {
     a.download = "kotonoha_list.csv"; a.click();
 }
 
+// --- G. 同期QR・URLコピー機能 ---
+function generateSyncLink() {
+    if (db.length === 0) { alert("データがありません"); return null; }
+    const json = JSON.stringify(db);
+    const encoded = btoa(unescape(encodeURIComponent(json)));
+    return window.location.origin + window.location.pathname + "?data=" + encoded;
+}
+
+function displayQR() {
+    const url = generateSyncLink();
+    if (!url) return;
+    if (url.length > 2800) { alert("データ過多のためQRコードが作成できません。JSON共有を使用してください。"); return; }
+    document.getElementById("syncPanel").style.display = "block";
+    document.getElementById("qrWrapper").style.display = "block";
+    document.getElementById("urlWrapper").style.display = "none";
+    const qrDiv = document.getElementById("qrcode");
+    qrDiv.innerHTML = "";
+    new QRCode(qrDiv, { text: url, width: 200, height: 200 });
+}
+
+function copyURL() {
+    const url = generateSyncLink();
+    if (!url) return;
+    navigator.clipboard.writeText(url).then(() => {
+        document.getElementById("syncPanel").style.display = "block";
+        document.getElementById("urlWrapper").style.display = "block";
+        document.getElementById("qrWrapper").style.display = "none";
+        document.getElementById("urlBox").value = url;
+    });
+}
+
+function closeSync() { document.getElementById("syncPanel").style.display = "none"; }
+
+// --- H. 通知機能 ---
 function requestNotify() { Notification.requestPermission(); }
 function checkNotify() {
     db.forEach(p => {
