@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>同意書管理システム (Full-Featured Master)</title>
+    <title>同意書管理システム (QR Sync Edition)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         :root { --main-color: #2e7d32; --sub-color: #e8f5e9; }
@@ -43,24 +43,40 @@
         .day b{font-size:14px; color:#666;}
         .flex{display:flex;gap:10px;flex-wrap:wrap;}
         .summary-box { background:var(--sub-color); padding:10px; border-radius:5px; flex:1; min-width:150px; border:1px solid #c8e6c9;}
+
+        /* QRコード表示エリア */
+        #qrDisplay { text-align: center; margin-top: 15px; display: none; padding: 10px; border: 2px dashed #06C755; }
+        #qrDisplay img { max-width: 200px; }
     </style>
 </head>
 <body>
 
 <h1>同意書管理システム</h1>
-<div class="version">Kotonoha Edition v4.0 (Full Integration)</div>
+<div class="version">Kotonoha Edition v4.5 (QR & JSON Sync)</div>
 
 <details class="card">
     <summary style="cursor:pointer; font-weight:bold; color:var(--main-color);">🔄 同期・高度な設定・バックアップ</summary>
     <div style="margin-top:10px;">
         <button onclick="requestNotify()" class="btn-blue">🔔 ブラウザ通知を有効にする</button>
-        <button onclick="createSyncURL()" class="btn-sync">🔗 LINE同期用URLを発行</button>
+        
         <div class="flex">
-            <button onclick="shareJSON()" class="btn-json" style="flex:1;">📤 JSON共有</button>
+            <button onclick="createSyncQR()" class="btn-sync" style="flex:1;">📱 スマホ同期用QR表示</button>
+            <button onclick="createSyncURL()" class="btn-sync" style="flex:1;">🔗 同期URLを発行</button>
+        </div>
+
+        <div id="qrDisplay">
+            <p style="font-size:12px; font-weight:bold;">スマホのカメラで読み取ってください</p>
+            <div id="qrImage"></div>
+            <button onclick="document.getElementById('qrDisplay').style.display='none'" style="background:#888; padding:5px; font-size:12px;">閉じる</button>
+        </div>
+        
+        <div class="flex">
+            <button onclick="shareJSON()" class="btn-json" style="flex:1;">📤 JSON共有 (LINE等)</button>
             <button onclick="downloadJSON()" class="btn-json" style="flex:1;">💾 JSON保存</button>
             <button onclick="document.getElementById('fileInput').click()" class="btn-json" style="flex:1;">📥 JSON読込</button>
         </div>
         <input type="file" id="fileInput" style="display:none" onchange="importData(event)">
+        
         <button onclick="restore()" class="btn-restore">↩️ 保存ミスを復元 (3世代前まで)</button>
         <button onclick="exportCSV()" class="btn-csv">📊 Excel用CSV出力</button>
     </div>
@@ -144,14 +160,13 @@ function restore() {
     } else { alert("復元データがありません"); }
 }
 
-// --- 計算ロジック (不変・厳守) ---
+// --- 計算ロジック (斎藤さんの現場ルール厳守) ---
 function getExpiry(consentDate, firstDate, isDeform, isEdit) {
     let base = (isEdit || !firstDate) ? new Date(consentDate) : new Date(firstDate);
     if (isDeform) {
         let d = new Date(base); d.setMonth(d.getMonth() + 1); d.setDate(d.getDate() - 1);
         return d;
     } else {
-        // 15日ルール
         return (base.getDate() <= 15) 
             ? new Date(base.getFullYear(), base.getMonth() + 6, 0) 
             : new Date(base.getFullYear(), base.getMonth() + 7, 0);
@@ -181,13 +196,11 @@ function save() {
 
     if (isEdit) db[idx] = data; else db.push(data);
     
-    saveRaw();
-    clearForm();
-    // 確実に表示されるようフィルタをリセット
+    saveRaw(); clearForm();
     document.getElementById("search").value = "";
     document.getElementById("filter").value = "all";
     render();
-    alert("保存しました。一覧をご確認ください。");
+    alert("保存しました。");
 }
 
 // --- 描画処理 ---
@@ -195,8 +208,6 @@ function render() {
     const listBody = document.getElementById("pList");
     listBody.innerHTML = "";
     const now = new Date(); now.setHours(0,0,0,0);
-    
-    // サマリー用
     const sumT = document.getElementById("sumThis"); const sumN = document.getElementById("sumNext");
     sumT.innerHTML = ""; sumN.innerHTML = "";
     const tY = now.getFullYear(); const tM = now.getMonth();
@@ -235,8 +246,6 @@ function render() {
                 </div>
             </td>`;
         listBody.appendChild(tr);
-
-        // サマリー追加
         if(exp.getFullYear()===tY && exp.getMonth()===tM) sumT.innerHTML += `<div>● ${p.name}</div>`;
         if(exp.getFullYear()===nY && exp.getMonth()===nM) sumN.innerHTML += `<div>● ${p.name}</div>`;
     });
@@ -265,18 +274,44 @@ function drawCalendar(y, m, targetId, labelId) {
     }
 }
 
-// --- 編集・削除 ---
+// --- 同期・共有ロジック (強化版) ---
+function createSyncURL() {
+    if (db.length === 0) return "";
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(db))));
+    return window.location.origin + window.location.pathname + "?data=" + encoded;
+}
+
+function createSyncQR() {
+    const url = createSyncURL();
+    if (!url) return;
+    if (url.length > 2500) { alert("データ量が多すぎるためQRコードを作成できません。JSON共有を使用してください。"); return; }
+    const qrImageArea = document.getElementById("qrImage");
+    qrImageArea.innerHTML = `<img src="https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encodeURIComponent(url)}&choe=UTF-8" alt="Sync QR">`;
+    document.getElementById("qrDisplay").style.display = "block";
+    document.getElementById("qrDisplay").scrollIntoView({behavior: "smooth"});
+}
+
+async function shareJSON() {
+    const jsonStr = JSON.stringify(db, null, 2);
+    const fileName = `kotonoha_${new Date().getTime()}.json`;
+    const f = new File([jsonStr], fileName, {type: 'application/json'});
+    
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [f] })) {
+        try {
+            await navigator.share({ files: [f], title: 'ことのは 同意書データ' });
+        } catch (err) { downloadJSON(); }
+    } else {
+        downloadJSON(); // シェア非対応ならダウンロード
+    }
+}
+
+// --- 他の機能 (維持) ---
 function edit(i) {
-    const p = db[i];
-    document.getElementById("editIdx").value = i;
-    document.getElementById("name").value = p.name;
-    document.getElementById("consent").value = p.consent;
-    document.getElementById("first").value = p.first || "";
-    document.getElementById("deform").checked = p.deform;
-    document.getElementById("notice").value = p.notice;
-    document.getElementById("memo").value = p.memo;
-    document.getElementById("formTitle").innerText = "編集: " + p.name;
-    document.getElementById("saveBtn").innerText = "変更を保存";
+    const p = db[i]; document.getElementById("editIdx").value = i;
+    document.getElementById("name").value = p.name; document.getElementById("consent").value = p.consent;
+    document.getElementById("first").value = p.first || ""; document.getElementById("deform").checked = p.deform;
+    document.getElementById("notice").value = p.notice; document.getElementById("memo").value = p.memo;
+    document.getElementById("formTitle").innerText = "編集: " + p.name; document.getElementById("saveBtn").innerText = "変更を保存";
     document.getElementById("formArea").scrollIntoView({behavior: "smooth"});
 }
 
@@ -290,25 +325,15 @@ function clearForm() {
     document.getElementById("saveBtn").innerText = "保存して一覧を更新";
 }
 
-// --- 外部連携 ---
 function goGoogle(i) {
     const p = db[i]; const ed = new Date(p.expiry);
     const nD = new Date(ed); nD.setDate(nD.getDate() - (p.notice || 7));
     const dStr = d => d.toISOString().replace(/-|:|\.\d+/g, "").split("T")[0];
     const url = (txt, date) => `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(p.name + txt)}&dates=${dStr(date)}/${dStr(date)}`;
-    if(confirm("「準備日」と「期限日」の2つを登録しますか？")){
+    if(confirm("準備日と期限日の2つを登録しますか？")){
         window.open(url("様 再同意準備", nD), '_blank');
         setTimeout(() => window.open(url("様 同意期限", ed), '_blank'), 500);
     }
-}
-
-function createSyncURL() {
-    if (db.length === 0) return;
-    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(db))));
-    const url = window.location.origin + window.location.pathname + "?data=" + encoded;
-    if (url.length > 7500) { alert("人数が多すぎるため、JSON共有を使用してください"); return; }
-    if (navigator.share) navigator.share({ title: '同期リンク', url: url });
-    else { navigator.clipboard.writeText(url); alert("同期URLをコピーしました"); }
 }
 
 function downloadJSON() {
@@ -317,20 +342,13 @@ function downloadJSON() {
     a.download = `kotonoha_${new Date().getTime()}.json`; a.click();
 }
 
-function shareJSON() {
-    const f = new File([JSON.stringify(db)], "kotonoha_backup.json", {type: 'application/json'});
-    if (navigator.share) navigator.share({ files: [f] }); else downloadJSON();
-}
-
 function importData(e) {
     const r = new FileReader();
     r.onload = (event) => {
         try {
             const imported = JSON.parse(event.target.result);
             if (confirm(`${imported.length}件取り込みますか？`)) {
-                backup();
-                imported.forEach(n => { if (!db.some(p => p.id === n.id)) db.push(n); });
-                saveRaw();
+                backup(); imported.forEach(n => { if (!db.some(p => p.id === n.id)) db.push(n); }); saveRaw();
             }
         } catch(e) { alert("形式エラー"); }
     };
@@ -344,7 +362,6 @@ function exportCSV() {
     a.download = "kotonoha_list.csv"; a.click();
 }
 
-// --- 通知 ---
 function requestNotify() { Notification.requestPermission(); }
 function checkNotify() {
     db.forEach(p => {
