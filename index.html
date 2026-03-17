@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>同意書管理システム (Full Integration)</title>
+    <title>同意書管理システム (Stable Master)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#4CAF50">
     <style>
@@ -11,10 +11,9 @@
         .version{text-align:center;font-size:11px;color:#888;margin-bottom:15px;}
         .card{background:white;padding:15px;border-radius:8px;margin-bottom:15px;box-shadow:0 2px 5px rgba(0,0,0,0.1);}
         input,textarea,select,button{width:100%;padding:12px;margin:5px 0 10px 0;font-size:16px;box-sizing:border-box;border-radius:5px;border:1px solid #ccc;}
-        button{background:#4CAF50;color:white;border:none;cursor:pointer;font-weight:bold;transition:0.2s;}
-        button:hover{opacity:0.8;}
+        button{background:#4CAF50;color:white;border:none;cursor:pointer;font-weight:bold;}
+        button:active{opacity:0.7;}
         
-        /* ボタン色分け */
         .btn-sync { background: #06C755; } 
         .btn-json { background: #673ab7; }
         .btn-restore { background: #ff9800; }
@@ -24,7 +23,7 @@
         .btn-edit { background: #2196f3; padding: 5px 10px; width: auto; margin:0;}
         .btn-google { background: #fb8c00; padding: 5px 10px; width: auto; margin:0; font-size: 11px;}
 
-        table{width:100%;border-collapse:collapse;}
+        table{width:100%;border-collapse:collapse;margin-top:10px;}
         th,td{border:1px solid #ddd;padding:10px;font-size:14px;text-align:left;}
         th{background:#eee;}
         .expired{background:#ffd6d6;}
@@ -37,28 +36,24 @@
         .day{border:1px solid #ddd;min-height:75px;padding:3px;font-size:10px;background:white;}
         .day b{font-size:13px;}
         .flex-group{display:flex;gap:10px;flex-wrap: wrap;}
-        .warning-text { font-size: 11px; color: #d32f2f; line-height: 1.4; margin-top: 5px; }
     </style>
 </head>
 <body>
 
 <h1>同意書管理システム</h1>
-<div class="version">Ultimate Stable v3.3</div>
+<div class="version">Stable Master v3.4</div>
 
 <details class="card" style="background: #e8f5e9;">
     <summary style="font-weight:bold; cursor:pointer; color:#2e7d32;">🔄 同期・バックアップ・復元・設定</summary>
     <div style="margin-top:10px;">
         <button onclick="enableNotification()" class="btn-blue">🔔 通知許可を有効にする</button>
-        <button onclick="generateSyncURL()" class="btn-sync">🔗 同期URLを発行 (LINE/自分用)</button>
-        <p class="warning-text">※同期URLは個人情報です。取り扱いに注意してください。</p>
-        
+        <button onclick="generateSyncURL()" class="btn-sync">🔗 同期URLを発行 (LINE等)</button>
         <div class="flex-group">
             <button onclick="shareJSON()" class="btn-json" style="flex:1;">📤 JSON共有</button>
             <button onclick="downloadJSON()" class="btn-json" style="flex:1;">💾 JSON保存</button>
             <button onclick="document.getElementById('importFile').click()" class="btn-json" style="flex:1;">📥 JSON読込</button>
         </div>
         <input type="file" id="importFile" style="display:none" accept=".json" onchange="importData(event)">
-        
         <button onclick="restoreAutoBackup()" class="btn-restore">↩️ 直前の自動バックアップから復元</button>
         <button onclick="backupCSV()" class="btn-csv">📊 Excel用CSV出力</button>
     </div>
@@ -72,25 +67,25 @@
 </div>
 
 <div class="card">
-    <input id="search" placeholder="名前やメモで検索..." style="margin-bottom:10px;">
+    <input id="search" placeholder="名前やメモで検索..." oninput="render()">
     <div class="flex-group">
-        <select id="sort" style="flex:1;"><option value="expiry">期限順</option><option value="name">名前順</option></select>
-        <select id="filter" style="flex:1;"><option value="all">すべて</option><option value="this">今月のみ</option><option value="next">来月のみ</option></select>
+        <select id="sort" style="flex:1;" onchange="render()"><option value="expiry">期限順</option><option value="name">名前順</option></select>
+        <select id="filter" style="flex:1;" onchange="render()"><option value="all">すべて表示</option><option value="this">今月のみ</option><option value="next">来月のみ</option></select>
     </div>
 </div>
 
 <div class="card" id="formSection">
     <h3 id="formTitle" style="margin-top:0;">患者登録 / 編集</h3>
-    <input type="hidden" id="editIndex">
+    <input type="hidden" id="editIndex" value="">
     <label>患者名</label><input id="name" placeholder="例：斎藤 太郎">
     <div class="flex-group">
         <div style="flex:1;"><label>同意日</label><input type="date" id="consent"></div>
-        <div style="flex:1;"><label>初療日（新規のみ）</label><input type="date" id="first"></div>
+        <div style="flex:1;"><label>初療日（新規のみ有効）</label><input type="date" id="first"></div>
     </div>
     <label style="display:block; margin: 10px 0;"><input type="checkbox" id="deform" style="width:auto; margin-right:8px;">変形徒手矯正（1ヶ月更新）</label>
     <label>通知準備（何日前に通知するか）</label><input type="number" id="notice" value="7">
     <label>メモ</label><textarea id="memo" placeholder="備考など"></textarea>
-    <button onclick="save()" style="font-size:1.2em; padding:15px;">保存（自動バックアップ実行）</button>
+    <button onclick="save()" style="font-size:1.2em; padding:15px; background:#2e7d32;">保存（一覧に反映）</button>
 </div>
 
 <div class="card">
@@ -105,9 +100,8 @@
 </div>
 
 <script>
-// --- 初期設定 ---
 let patients = JSON.parse(localStorage.getItem("patients") || "[]");
-let notifiedInSession = []; // ページ滞在中の二重通知防止
+let notifiedInSession = [];
 
 window.onload = function() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -121,12 +115,11 @@ window.onload = function() {
                 localStorage.setItem("patients", JSON.stringify(patients));
                 window.location.href = window.location.pathname;
             }
-        } catch (e) { alert("同期失敗。URLが壊れている可能性があります。"); }
+        } catch (e) { alert("同期失敗"); }
     }
     render();
 };
 
-// --- バックアップ機能 ---
 function autoBackup() {
     const current = localStorage.getItem("patients");
     const b1 = localStorage.getItem("patients_backup");
@@ -136,94 +129,67 @@ function autoBackup() {
 
 function restoreAutoBackup() {
     const b = localStorage.getItem("patients_backup");
-    if (!b) { alert("バックアップがありません。"); return; }
-    if (confirm("直前の保存状態に戻しますか？")) {
+    if (b && confirm("直前の状態に戻しますか？")) {
         patients = JSON.parse(b);
         localStorage.setItem("patients", b);
         render();
     }
 }
 
-// --- 計算ロジック（不変） ---
 const endOfMonth = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
 const addMonths = (date, m) => { let d = new Date(date); d.setMonth(d.getMonth() + m); return d; };
 
 function calculateExpiry(consent, first, deform, isEdit) {
     let base = (isEdit || !first) ? new Date(consent) : new Date(first);
-    let expiry;
     if (deform) {
-        expiry = new Date(base); expiry.setMonth(expiry.getMonth() + 1); expiry.setDate(expiry.getDate() - 1);
+        let exp = new Date(base);
+        exp.setMonth(exp.getMonth() + 1);
+        exp.setDate(exp.getDate() - 1);
+        return exp;
     } else {
-        expiry = (base.getDate() <= 15) ? endOfMonth(addMonths(base, 5)) : endOfMonth(addMonths(base, 6));
+        return (base.getDate() <= 15) ? endOfMonth(addMonths(base, 5)) : endOfMonth(addMonths(base, 6));
     }
-    return expiry;
 }
 
-// --- アクション ---
 function save() {
-    let name = document.getElementById("name").value;
-    let consent = document.getElementById("consent").value;
+    const name = document.getElementById("name").value;
+    const consent = document.getElementById("consent").value;
     if (!name || !consent) { alert("名前と同意日は必須です"); return; }
 
     autoBackup();
-    let idx = document.getElementById("editIndex").value;
-    let isEdit = (idx !== "");
-    let expiry = calculateExpiry(consent, document.getElementById("first").value || null, document.getElementById("deform").checked, isEdit);
+    const idxStr = document.getElementById("editIndex").value;
+    const isEdit = (idxStr !== "");
+    const first = document.getElementById("first").value || null;
+    const deform = document.getElementById("deform").checked;
+    const expiry = calculateExpiry(consent, first, deform, isEdit);
     
-    let data = {
-        id: isEdit ? patients[idx].id : Date.now(),
-        name, consent, 
-        first: document.getElementById("first").value || null, 
-        deform: document.getElementById("deform").checked, 
+    const data = {
+        id: isEdit ? patients[parseInt(idxStr)].id : Date.now(),
+        name: name,
+        consent: consent,
+        first: first,
+        deform: deform,
         notice: Number(document.getElementById("notice").value || 7),
         memo: document.getElementById("memo").value,
         expiry: expiry.toISOString()
     };
 
-    if (!isEdit) patients.push(data); else patients[idx] = data;
-    localStorage.setItem("patients", JSON.stringify(patients));
-    clearForm(); render();
-    window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-function generateSyncURL() {
-    if (patients.length === 0) return;
-    const jsonStr = JSON.stringify(patients);
-    const encodedData = btoa(unescape(encodeURIComponent(jsonStr)));
-    const syncURL = window.location.origin + window.location.pathname + "?data=" + encodedData;
-    
-    if (syncURL.length > 7000) {
-        alert("人数が多すぎるためURLを作成できません。JSON共有を使用してください。");
-        return;
-    }
-    if (navigator.share) {
-        navigator.share({ title: '同期リンク', url: syncURL });
+    if (isEdit) {
+        patients[parseInt(idxStr)] = data;
     } else {
-        navigator.clipboard.writeText(syncURL); alert("同期URLをコピーしました。");
+        patients.push(data);
     }
-}
 
-function importData(event) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        try {
-            const imported = JSON.parse(e.target.result);
-            if (confirm(`${imported.length}件のデータを取り込みますか？`)) {
-                autoBackup();
-                imported.forEach(newItem => {
-                    if (!patients.some(p => p.id === newItem.id)) patients.push(newItem);
-                });
-                localStorage.setItem("patients", JSON.stringify(patients));
-                render();
-            }
-        } catch (err) { alert("JSON形式が正しくありません。"); }
-    };
-    reader.readAsText(event.target.files[0]);
+    localStorage.setItem("patients", JSON.stringify(patients));
+    clearForm();
+    render(); // 一覧を更新
+    alert("保存しました");
 }
 
 function render() {
-    let tbody = document.getElementById("list"); tbody.innerHTML = "";
-    let now = new Date(); now.setHours(0,0,0,0);
+    const tbody = document.getElementById("list");
+    tbody.innerHTML = "";
+    const now = new Date(); now.setHours(0,0,0,0);
     const tY = now.getFullYear(); const tM = now.getMonth();
     const nD = new Date(tY, tM + 1, 1);
     const nY = nD.getFullYear(); const nM = nD.getMonth();
@@ -231,18 +197,22 @@ function render() {
     document.getElementById("labelThis").innerText = `${tY}年 ${tM + 1}月`;
     document.getElementById("labelNext").innerText = `${nY}年 ${nM + 1}月`;
 
-    let thisBox = document.getElementById("thisMonthSummary");
-    let nextBox = document.getElementById("nextMonthSummary");
-    thisBox.innerHTML = ""; nextBox.innerHTML = "";
+    const summaryThis = document.getElementById("thisMonthSummary");
+    const summaryNext = document.getElementById("nextMonthSummary");
+    summaryThis.innerHTML = ""; summaryNext.innerHTML = "";
 
-    let search = document.getElementById("search").value.toLowerCase();
-    let filter = document.getElementById("filter").value;
-    let list = [...patients].filter(p => (p.name + p.memo).toLowerCase().includes(search));
+    const search = document.getElementById("search").value.toLowerCase();
+    const filter = document.getElementById("filter").value;
     
-    list.sort((a,b) => document.getElementById("sort").value === "name" ? a.name.localeCompare(b.name) : new Date(a.expiry) - new Date(b.expiry));
+    let list = patients.map((p, originalIndex) => ({...p, originalIndex}))
+        .filter(p => (p.name + p.memo).toLowerCase().includes(search));
+    
+    list.sort((a,b) => {
+        if (document.getElementById("sort").value === "name") return a.name.localeCompare(b.name);
+        return new Date(a.expiry) - new Date(b.expiry);
+    });
 
     list.forEach((p) => {
-        const rIdx = patients.indexOf(p);
         const exp = new Date(p.expiry);
         const eY = exp.getFullYear(); const eM = exp.getMonth();
         if (filter === "this" && (eY !== tY || eM !== tM)) return;
@@ -259,15 +229,15 @@ function render() {
             <td>${diff < 0 ? "期限切れ" : diff + "日"}</td>
             <td>
                 <div class="flex-group" style="gap:5px;">
-                    <button onclick="edit(${rIdx})" class="btn-edit">編</button>
-                    <button onclick="del(${rIdx})" class="btn-del">消</button>
-                    <button onclick="addGoogle(${rIdx})" class="btn-google">Gカレ</button>
+                    <button onclick="edit(${p.originalIndex})" class="btn-edit">編</button>
+                    <button onclick="del(${p.originalIndex})" class="btn-del">消</button>
+                    <button onclick="addGoogle(${p.originalIndex})" class="btn-google">Gカレ</button>
                 </div>
             </td>`;
         tbody.appendChild(tr);
 
-        if (eY === tY && eM === tM) thisBox.innerHTML += `<div style="font-size:13px; color:#2196f3;">● ${p.name} (${exp.getDate()}日)</div>`;
-        if (eY === nY && eM === nM) nextBox.innerHTML += `<div style="font-size:13px; color:#2196f3;">● ${p.name} (${exp.getDate()}日)</div>`;
+        if (eY === tY && eM === tM) summaryThis.innerHTML += `<div style="font-size:12px; color:#2196f3;">● ${p.name}(${exp.getDate()}日)</div>`;
+        if (eY === nY && eM === nM) summaryNext.innerHTML += `<div style="font-size:12px; color:#2196f3;">● ${p.name}(${exp.getDate()}日)</div>`;
     });
 
     renderCalendar(tY, tM, "calendarThis");
@@ -275,28 +245,8 @@ function render() {
     checkNotification();
 }
 
-function renderCalendar(year, month, target) {
-    let cal = document.getElementById(target); cal.innerHTML = "";
-    ["日","月","火","水","木","金","土"].forEach(h => {
-        let d = document.createElement("div"); d.style = "text-align:center; font-weight:bold; background:#eee; padding:5px;"; d.innerText = h; cal.appendChild(d);
-    });
-    let first = new Date(year, month, 1).getDay();
-    for (let i = 0; i < first; i++) { cal.appendChild(document.createElement("div")).className="day"; }
-    let last = new Date(year, month + 1, 0).getDate();
-    for (let i = 1; i <= last; i++) {
-        let cell = document.createElement("div"); cell.className = "day"; cell.innerHTML = `<b>${i}</b><br>`;
-        patients.forEach(p => {
-            let exp = new Date(p.expiry);
-            if (exp.getFullYear() === year && exp.getMonth() === month && exp.getDate() === i) {
-                cell.innerHTML += `<span style="color:red; font-size:9px;">●${p.name}</span><br>`;
-            }
-        });
-        cal.appendChild(cell);
-    }
-}
-
 function edit(i) {
-    let p = patients[i];
+    const p = patients[i];
     document.getElementById("editIndex").value = i;
     document.getElementById("name").value = p.name;
     document.getElementById("consent").value = p.consent;
@@ -306,36 +256,6 @@ function edit(i) {
     document.getElementById("memo").value = p.memo;
     document.getElementById("formTitle").innerText = "編集: " + p.name;
     document.getElementById("formSection").scrollIntoView({behavior: "smooth"});
-}
-
-function del(i) { if (confirm(patients[i].name + " 様を削除しますか？")) { autoBackup(); patients.splice(i, 1); localStorage.setItem("patients", JSON.stringify(patients)); render(); } }
-
-function addGoogle(i) {
-    let p = patients[i]; let exp = new Date(p.expiry);
-    let nDay = new Date(exp); nDay.setDate(nDay.getDate() - (p.notice || 7));
-    const dStr = d => d.toISOString().replace(/-|:|\.\d+/g, "").split("T")[0];
-    const url = (t, d) => `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(p.name+t)}&dates=${dStr(d)}/${dStr(d)}`;
-    if(confirm("「準備日」と「期限日」の両方を登録しますか？")){
-        window.open(url("様 再同意準備", nDay), '_blank');
-        setTimeout(() => window.open(url("様 同意期限", exp), '_blank'), 500);
-    }
-}
-
-function enableNotification() { 
-    if (!("Notification" in window)) { alert("このブラウザは通知に対応していません"); return; }
-    Notification.requestPermission().then(permission => { if (permission === "granted") alert("通知が許可されました"); });
-}
-
-function checkNotification() {
-    patients.forEach(p => {
-        let exp = new Date(p.expiry); let nD = new Date(exp); nD.setDate(nD.getDate() - (p.notice || 7));
-        if (new Date().toDateString() === nD.toDateString() && !notifiedInSession.includes(p.id)) {
-            if (Notification.permission === "granted") {
-                new Notification("【再同意準備】", { body: p.name + "様の準備日です" });
-                notifiedInSession.push(p.id);
-            }
-        }
-    });
 }
 
 function clearForm() {
@@ -348,30 +268,27 @@ function clearForm() {
     document.getElementById("formTitle").innerText = "患者登録 / 編集";
 }
 
-function downloadJSON() {
-    const a = document.createElement("a"); const d = new Date();
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(patients, null, 2)], { type: 'application/json' }));
-    a.download = `backup_${d.getFullYear()}${(d.getMonth()+1).toString().padStart(2,'0')}${d.getDate().toString().padStart(2,'0')}.json`;
-    a.click();
+function del(i) {
+    if (confirm(patients[i].name + " 様を削除しますか？")) {
+        autoBackup();
+        patients.splice(i, 1);
+        localStorage.setItem("patients", JSON.stringify(patients));
+        render();
+    }
 }
 
-function shareJSON() {
-    const f = new File([JSON.stringify(patients)], "patients_backup.json", { type: 'application/json' });
-    if (navigator.share) navigator.share({ files: [f] }); else downloadJSON();
-}
-
-function backupCSV() {
-    let csv = "\uFEFF名前,同意日,初療日,変形,期限,メモ\n";
-    patients.forEach(p => {
-        csv += `${p.name},${p.consent},${p.first||""},${p.deform?"あり":""},${new Date(p.expiry).toLocaleDateString()},${p.memo.replace(/\n/g," ")}\n`;
+function renderCalendar(year, month, targetId) {
+    const cal = document.getElementById(targetId);
+    cal.innerHTML = "";
+    ["日","月","火","水","木","金","土"].forEach(h => {
+        let d = document.createElement("div"); d.style = "text-align:center; font-weight:bold; background:#eee; padding:5px;"; d.innerText = h; cal.appendChild(d);
     });
-    let a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    a.download = "backup.csv"; a.click();
-}
-
-document.getElementById("search").oninput = render;
-document.getElementById("sort").onchange = render;
-document.getElementById("filter").onchange = render;
-</script>
-</body>
-</html>
+    const firstDay = new Date(year, month, 1).getDay();
+    for (let i = 0; i < firstDay; i++) { cal.appendChild(document.createElement("div")).className="day"; }
+    const lastDate = new Date(year, month + 1, 0).getDate();
+    for (let i = 1; i <= lastDate; i++) {
+        let cell = document.createElement("div"); cell.className = "day"; cell.innerHTML = `<b>${i}</b><br>`;
+        patients.forEach(p => {
+            let exp = new Date(p.expiry);
+            if (exp.getFullYear() === year && exp.getMonth() === month && exp.getDate() === i) {
+                cell.innerHTML += `<span style="color:red; font-size:9px;">
