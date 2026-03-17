@@ -1,478 +1,433 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>同意書管理システム</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>同意書管理</title>
 
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#4CAF50">
-
-<link rel="manifest" href="manifest.json">
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
 <style>
 
 body{
 font-family:sans-serif;
+margin:20px;
 background:#f5f5f5;
-padding:10px;
-max-width:1000px;
-margin:auto;
 }
 
 h1{
-text-align:center;
-color:#333;
-margin-bottom:5px;
-font-size:24px;
-}
-
-.version{
-text-align:center;
-font-size:11px;
-color:#888;
-margin-bottom:15px;
+margin-bottom:10px;
 }
 
 .card{
 background:white;
 padding:15px;
-border-radius:8px;
 margin-bottom:15px;
-box-shadow:0 2px 5px rgba(0,0,0,0.1);
+border-radius:10px;
+box-shadow:0 0 5px rgba(0,0,0,0.1);
 }
 
-input,textarea,select,button{
-width:100%;
-padding:12px;
-margin:5px 0 10px 0;
+input,select,button{
+padding:8px;
+margin:5px;
 font-size:16px;
-box-sizing:border-box;
-border-radius:5px;
-border:1px solid #ccc;
 }
-
-button{
-background:#4CAF50;
-color:white;
-border:none;
-cursor:pointer;
-font-weight:bold;
-}
-
-.btn-sync{background:#06C755;}
-.btn-json{background:#673ab7;}
-.btn-restore{background:#ff9800;}
-.btn-csv{background:#607d8b;}
-
-.btn-del{background:#f44336;width:auto;padding:5px 10px;}
-.btn-edit{background:#2196f3;width:auto;padding:5px 10px;}
-.btn-google{background:#fb8c00;width:auto;padding:5px 10px;}
 
 table{
 width:100%;
 border-collapse:collapse;
 }
 
-th,td{
-border:1px solid #ddd;
-padding:10px;
-font-size:14px;
+td,th{
+padding:8px;
+border-bottom:1px solid #ddd;
 }
 
-th{
-background:#eee;
-}
-
-.expired{
-background:#ffd6d6;
-}
-
-.status-bar{
-height:4px;
-width:100%;
-margin-top:4px;
-border-radius:2px;
-}
-
-.bg-red{background:red;}
-.bg-orange{background:#ff8800;}
-.bg-yellow{background:#caa400;}
-
-.calendar-grid{
-display:grid;
-grid-template-columns:repeat(7,1fr);
-gap:3px;
-}
-
-.day{
-border:1px solid #ddd;
-min-height:70px;
-padding:3px;
-font-size:10px;
-background:white;
-}
-
-.day b{font-size:13px;}
-
-.flex-group{
-display:flex;
-gap:10px;
-flex-wrap:wrap;
-}
+.expired{background:#ffb3b3}
+.red{background:#ffcccc}
+.orange{background:#ffe0b3}
+.yellow{background:#fff6b3}
 
 </style>
 </head>
 
 <body>
 
-<h1>同意書管理システム</h1>
-<div class="version">Master v4</div>
+<h1 id="title"></h1>
 
-<details class="card" style="background:#e8f5e9;">
-<summary style="font-weight:bold;">同期・バックアップ</summary>
+<div id="clinicSetup" class="card" style="display:none">
 
-<button onclick="generateSyncURL()" class="btn-sync">
-同期URL発行
-</button>
+<h3>施術所登録</h3>
 
-<button onclick="showQR()" class="btn-sync">
-QRコード表示
-</button>
+<input id="clinicName" placeholder="施術所名">
+<input id="clinicTel" placeholder="電話番号">
+<input id="clinicAddress" placeholder="住所">
 
-<button onclick="startQRScan()" class="btn-sync">
-QR読み取り同期
-</button>
+<br>
 
-<div id="qrBox" style="text-align:center;"></div>
-
-<div id="qr-reader" style="width:300px;margin:auto;"></div>
-
-<div class="flex-group">
-
-<button onclick="shareJSON()" class="btn-json">
-JSON共有
-</button>
-
-<button onclick="downloadJSON()" class="btn-json">
-JSON保存
-</button>
-
-<button onclick="document.getElementById('importFile').click()" class="btn-json">
-JSON読込
-</button>
+<button onclick="saveClinic()">保存</button>
 
 </div>
 
-<input type="file" id="importFile" style="display:none" accept=".json" onchange="importData(event)">
 
-<button onclick="restoreAutoBackup()" class="btn-restore">
-自動バックアップ復元
-</button>
-
-<button onclick="backupCSV()" class="btn-csv">
-CSV出力
-</button>
-
-</details>
+<div id="mainApp" style="display:none">
 
 <div class="card">
 
-<div style="display:flex;gap:20px;flex-wrap:wrap;">
+<h3>患者登録</h3>
 
-<div>
-<strong>今月更新</strong>
-<div id="thisMonthSummary"></div>
-</div>
+<input id="name" placeholder="患者名">
 
-<div>
-<strong>来月更新</strong>
-<div id="nextMonthSummary"></div>
-</div>
+<br>
 
-</div>
-
-</div>
-
-<div class="card">
-
-<input id="search" placeholder="検索">
-
-<div class="flex-group">
-
-<select id="sort">
-<option value="expiry">期限順</option>
-<option value="name">名前順</option>
-</select>
-
-<select id="filter">
-<option value="all">すべて</option>
-<option value="this">今月</option>
-<option value="next">来月</option>
-</select>
-
-</div>
-
-</div>
-
-<div class="card" id="formSection">
-
-<input type="hidden" id="editIndex">
-
-<label>患者名</label>
-<input id="name">
-
-<label>同意日</label>
+同意日  
 <input type="date" id="consent">
 
-<label>初療日</label>
+<br>
+
+初療日  
 <input type="date" id="first">
 
-<label>
-<input type="checkbox" id="deform" style="width:auto;">
-変形徒手矯正
-</label>
+<br>
 
-<label>通知日数</label>
-<input type="number" id="notice" value="7">
+<select id="type">
+<option value="normal">マッサージ</option>
+<option value="deform">変形徒手</option>
+</select>
 
-<label>メモ</label>
-<textarea id="memo"></textarea>
+<br>
 
-<button onclick="save()">保存</button>
+<button onclick="addPatient()">登録</button>
 
 </div>
+
 
 <div class="card">
 
 <h3>患者一覧</h3>
 
-<table>
+<table id="patientTable">
 
 <thead>
+
 <tr>
-<th>名前</th>
+<th>患者名</th>
 <th>期限</th>
 <th>残日数</th>
-<th>操作</th>
+<th></th>
 </tr>
+
 </thead>
 
-<tbody id="list"></tbody>
+<tbody></tbody>
 
 </table>
 
 </div>
 
+
 <div class="card">
 
-<h3>更新カレンダー</h3>
+<h3>バックアップ</h3>
 
-<h4 id="labelThis"></h4>
-<div id="calendarThis" class="calendar-grid"></div>
+<button onclick="exportJSON()">JSON保存</button>
 
-<h4 id="labelNext"></h4>
-<div id="calendarNext" class="calendar-grid"></div>
+<input type="file" onchange="importJSON(event)">
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
-<script src="https://unpkg.com/html5-qrcode"></script>
+
+<div class="card">
+
+<h3>QR同期</h3>
+
+<button onclick="showQR()">QR作成</button>
+
+<div id="qrcode"></div>
+
+<input id="qrImport" placeholder="QRデータ貼り付け">
+<button onclick="importQR()">同期</button>
+
+</div>
+
+</div>
+
+
 
 <script>
 
-let patients=JSON.parse(localStorage.getItem("patients")||"[]");
-let notifiedToday=[];
+let clinic=null
+let patients=[]
 
-window.onload=function(){
 
-if("Notification" in window){
-Notification.requestPermission();
-}
+function init(){
 
-render();
+clinic=JSON.parse(localStorage.getItem("clinic"))
 
-}
+patients=JSON.parse(localStorage.getItem("patients")||"[]")
 
-function showQR(){
+if(!clinic){
 
-const json=JSON.stringify(patients);
-const encoded=btoa(unescape(encodeURIComponent(json)));
+document.getElementById("clinicSetup").style.display="block"
 
-const url=location.origin+location.pathname+"?data="+encoded;
-
-document.getElementById("qrBox").innerHTML="";
-
-QRCode.toCanvas(url,{width:220},function(err,canvas){
-document.getElementById("qrBox").appendChild(canvas);
-});
-
-}
-
-function startQRScan(){
-
-const scanner=new Html5Qrcode("qr-reader");
-
-scanner.start(
-{facingMode:"environment"},
-{fps:10,qrbox:250},
-
-qrMessage=>{
-
-scanner.stop();
-
-try{
-
-const url=new URL(qrMessage);
-const data=url.searchParams.get("data");
-
-const decoded=JSON.parse(
-decodeURIComponent(
-escape(atob(data))
-)
-);
-
-patients=decoded;
-
-localStorage.setItem(
-"patients",
-JSON.stringify(patients)
-);
-
-render();
-
-alert("同期完了");
-
-}catch{
-
-alert("QRエラー");
-
-}
-
-},
-
-error=>{}
-
-);
-
-}
-
-function save(){
-
-let name=document.getElementById("name").value;
-let consent=document.getElementById("consent").value;
-
-if(!name||!consent){
-alert("入力してください");
-return;
-}
-
-let idx=document.getElementById("editIndex").value;
-
-let data={
-id:idx?patients[idx].id:Date.now(),
-name:name,
-consent:consent,
-first:document.getElementById("first").value,
-deform:document.getElementById("deform").checked,
-notice:Number(document.getElementById("notice").value||7),
-memo:document.getElementById("memo").value,
-expiry:new Date(consent)
-};
-
-if(idx===""){
-patients.push(data);
 }else{
-patients[idx]=data;
-}
 
-localStorage.setItem(
-"patients",
-JSON.stringify(patients)
-);
-
-render();
+startApp()
 
 }
+
+}
+
+
+function startApp(){
+
+document.getElementById("mainApp").style.display="block"
+
+document.getElementById("title").innerText=
+clinic.name+" 同意書管理"
+
+render()
+
+}
+
+
+function saveClinic(){
+
+clinic={
+name:clinicName.value,
+tel:clinicTel.value,
+address:clinicAddress.value
+}
+
+localStorage.setItem("clinic",JSON.stringify(clinic))
+
+document.getElementById("clinicSetup").style.display="none"
+
+startApp()
+
+}
+
+
+
+function addPatient(){
+
+let p={
+
+name:name.value,
+
+consent:consent.value,
+
+first:first.value,
+
+type:type.value
+
+}
+
+patients.push(p)
+
+savePatients()
+
+render()
+
+}
+
+
+
+function savePatients(){
+
+localStorage.setItem("patients",JSON.stringify(patients))
+
+}
+
+
+
+function calcExpiry(consent,first,type){
+
+let start=new Date(consent)
+
+if(first){
+
+let f=new Date(first)
+
+let diff=(f-start)/(1000*60*60*24)
+
+if(diff<=30){
+
+start=f
+
+}
+
+}
+
+if(type==="deform"){
+
+let d=new Date(start)
+
+d.setMonth(d.getMonth()+1)
+
+d.setDate(d.getDate()-1)
+
+return d
+
+}
+
+let day=start.getDate()
+
+let m=start.getMonth()
+
+let y=start.getFullYear()
+
+let add=(day<=15)?6:7
+
+return new Date(y,m+add+1,0)
+
+}
+
+
 
 function render(){
 
-let tbody=document.getElementById("list");
+let tbody=document.querySelector("#patientTable tbody")
 
-tbody.innerHTML="";
+tbody.innerHTML=""
 
 patients.forEach((p,i)=>{
 
-let tr=document.createElement("tr");
+let expiry=calcExpiry(p.consent,p.first,p.type)
+
+let today=new Date()
+
+let diff=Math.ceil((expiry-today)/(1000*60*60*24))
+
+let cls=""
+
+if(diff<0)cls="expired"
+else if(diff<=7)cls="red"
+else if(diff<=14)cls="orange"
+else if(diff<=30)cls="yellow"
+
+let tr=document.createElement("tr")
+
+tr.className=cls
 
 tr.innerHTML=`
-<td>
-<b>${p.name}</b>
-${p.deform?'<br><small>変形徒手</small>':''}
-</td>
 
-<td>${new Date(p.expiry).toLocaleDateString()}</td>
+<td>${p.name}</td>
+<td>${expiry.toLocaleDateString()}</td>
+<td>${diff}</td>
+<td><button onclick="del(${i})">削除</button></td>
 
-<td>-</td>
+`
 
-<td>
+tbody.appendChild(tr)
 
-<button onclick="edit(${i})" class="btn-edit">
-編
-</button>
-
-<button onclick="del(${i})" class="btn-del">
-消
-</button>
-
-</td>
-`;
-
-tbody.appendChild(tr);
-
-});
+})
 
 }
 
-function edit(i){
 
-let p=patients[i];
-
-document.getElementById("editIndex").value=i;
-document.getElementById("name").value=p.name;
-document.getElementById("consent").value=p.consent;
-document.getElementById("first").value=p.first||"";
-document.getElementById("deform").checked=p.deform;
-document.getElementById("notice").value=p.notice;
-document.getElementById("memo").value=p.memo;
-
-}
 
 function del(i){
 
-if(confirm("削除しますか？")){
+patients.splice(i,1)
 
-patients.splice(i,1);
+savePatients()
 
-localStorage.setItem(
-"patients",
-JSON.stringify(patients)
-);
-
-render();
+render()
 
 }
 
+
+
+function exportJSON(){
+
+let data=JSON.stringify({clinic,patients})
+
+let blob=new Blob([data])
+
+let a=document.createElement("a")
+
+a.href=URL.createObjectURL(blob)
+
+a.download="backup.json"
+
+a.click()
+
 }
 
-</script>
 
-<script>
 
-if("serviceWorker" in navigator){
+function importJSON(e){
 
-navigator.serviceWorker.register("service-worker.js");
+let file=e.target.files[0]
+
+let reader=new FileReader()
+
+reader.onload=function(){
+
+let data=JSON.parse(reader.result)
+
+clinic=data.clinic
+
+patients=data.patients
+
+localStorage.setItem("clinic",JSON.stringify(clinic))
+localStorage.setItem("patients",JSON.stringify(patients))
+
+location.reload()
 
 }
+
+reader.readAsText(file)
+
+}
+
+
+
+function showQR(){
+
+let data=JSON.stringify({clinic,patients})
+
+let base=btoa(data)
+
+let url=location.origin+location.pathname+"#"+base
+
+let div=document.getElementById("qrcode")
+
+div.innerHTML=""
+
+QRCode.toCanvas(url,function(err,canvas){
+
+div.appendChild(canvas)
+
+})
+
+}
+
+
+
+function importQR(){
+
+let txt=document.getElementById("qrImport").value
+
+let base=txt.split("#")[1]
+
+let data=JSON.parse(atob(base))
+
+clinic=data.clinic
+patients=data.patients
+
+savePatients()
+
+localStorage.setItem("clinic",JSON.stringify(clinic))
+
+location.reload()
+
+}
+
+
+
+init()
 
 </script>
 
