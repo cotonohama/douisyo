@@ -11,12 +11,12 @@
 
 body{
 font-family:sans-serif;
-margin:20px;
+margin:15px;
 background:#f5f5f5;
 }
 
 h1{
-margin-bottom:10px;
+font-size:22px;
 }
 
 .card{
@@ -29,7 +29,7 @@ box-shadow:0 0 5px rgba(0,0,0,0.1);
 
 input,select,button{
 padding:8px;
-margin:5px;
+margin:4px;
 font-size:16px;
 }
 
@@ -41,12 +41,18 @@ border-collapse:collapse;
 td,th{
 padding:8px;
 border-bottom:1px solid #ddd;
+text-align:left;
 }
 
 .expired{background:#ffb3b3}
 .red{background:#ffcccc}
 .orange{background:#ffe0b3}
 .yellow{background:#fff6b3}
+
+.sectionTitle{
+font-weight:bold;
+margin-bottom:8px;
+}
 
 </style>
 </head>
@@ -57,7 +63,7 @@ border-bottom:1px solid #ddd;
 
 <div id="clinicSetup" class="card" style="display:none">
 
-<h3>施術所登録</h3>
+<div class="sectionTitle">施術所登録</div>
 
 <input id="clinicName" placeholder="施術所名">
 <input id="clinicTel" placeholder="電話番号">
@@ -74,7 +80,7 @@ border-bottom:1px solid #ddd;
 
 <div class="card">
 
-<h3>患者登録</h3>
+<div class="sectionTitle">患者登録</div>
 
 <input id="name" placeholder="患者名">
 
@@ -104,22 +110,51 @@ border-bottom:1px solid #ddd;
 
 <div class="card">
 
-<h3>患者一覧</h3>
+<div class="sectionTitle">検索</div>
 
-<table id="patientTable">
+<input id="search" placeholder="患者名検索" onkeyup="render()">
+
+<button onclick="sortExpiry()">期限順並び替え</button>
+
+</div>
+
+
+<div class="card">
+
+<div class="sectionTitle">更新患者（30日以内）</div>
+
+<table>
+<thead>
+<tr>
+<th>患者</th>
+<th>期限</th>
+<th>残日</th>
+</tr>
+</thead>
+<tbody id="updateList"></tbody>
+</table>
+
+</div>
+
+
+<div class="card">
+
+<div class="sectionTitle">患者一覧</div>
+
+<table>
 
 <thead>
 
 <tr>
-<th>患者名</th>
+<th>患者</th>
 <th>期限</th>
-<th>残日数</th>
+<th>残日</th>
 <th></th>
 </tr>
 
 </thead>
 
-<tbody></tbody>
+<tbody id="patientList"></tbody>
 
 </table>
 
@@ -128,7 +163,7 @@ border-bottom:1px solid #ddd;
 
 <div class="card">
 
-<h3>バックアップ</h3>
+<div class="sectionTitle">バックアップ</div>
 
 <button onclick="exportJSON()">JSON保存</button>
 
@@ -139,13 +174,13 @@ border-bottom:1px solid #ddd;
 
 <div class="card">
 
-<h3>QR同期</h3>
+<div class="sectionTitle">QR同期</div>
 
 <button onclick="showQR()">QR作成</button>
 
 <div id="qrcode"></div>
 
-<input id="qrImport" placeholder="QRデータ貼り付け">
+<input id="qrImport" placeholder="QRデータ貼付">
 <button onclick="importQR()">同期</button>
 
 </div>
@@ -158,22 +193,18 @@ border-bottom:1px solid #ddd;
 
 let clinic=null
 let patients=[]
+let sortMode=false
 
 
 function init(){
 
 clinic=JSON.parse(localStorage.getItem("clinic"))
-
 patients=JSON.parse(localStorage.getItem("patients")||"[]")
 
 if(!clinic){
-
-document.getElementById("clinicSetup").style.display="block"
-
+clinicSetup.style.display="block"
 }else{
-
 startApp()
-
 }
 
 }
@@ -181,14 +212,14 @@ startApp()
 
 function startApp(){
 
-document.getElementById("mainApp").style.display="block"
+mainApp.style.display="block"
 
-document.getElementById("title").innerText=
-clinic.name+" 同意書管理"
+title.innerText=clinic.name+" 同意書管理"
 
 render()
 
 }
+
 
 
 function saveClinic(){
@@ -201,7 +232,7 @@ address:clinicAddress.value
 
 localStorage.setItem("clinic",JSON.stringify(clinic))
 
-document.getElementById("clinicSetup").style.display="none"
+clinicSetup.style.display="none"
 
 startApp()
 
@@ -212,15 +243,10 @@ startApp()
 function addPatient(){
 
 let p={
-
 name:name.value,
-
 consent:consent.value,
-
 first:first.value,
-
 type:type.value
-
 }
 
 patients.push(p)
@@ -252,9 +278,7 @@ let f=new Date(first)
 let diff=(f-start)/(1000*60*60*24)
 
 if(diff<=30){
-
 start=f
-
 }
 
 }
@@ -272,9 +296,7 @@ return d
 }
 
 let day=start.getDate()
-
 let m=start.getMonth()
-
 let y=start.getFullYear()
 
 let add=(day<=15)?6:7
@@ -287,11 +309,22 @@ return new Date(y,m+add+1,0)
 
 function render(){
 
-let tbody=document.querySelector("#patientTable tbody")
+let search=search.value.toLowerCase()
 
-tbody.innerHTML=""
+let list=[...patients]
 
-patients.forEach((p,i)=>{
+if(sortMode){
+
+list.sort((a,b)=>calcExpiry(a.consent,a.first,a.type)-calcExpiry(b.consent,b.first,b.type))
+
+}
+
+patientList.innerHTML=""
+updateList.innerHTML=""
+
+list.forEach((p,i)=>{
+
+if(!p.name.toLowerCase().includes(search))return
 
 let expiry=calcExpiry(p.consent,p.first,p.type)
 
@@ -306,20 +339,28 @@ else if(diff<=7)cls="red"
 else if(diff<=14)cls="orange"
 else if(diff<=30)cls="yellow"
 
-let tr=document.createElement("tr")
-
-tr.className=cls
-
-tr.innerHTML=`
-
+let row=`
+<tr class="${cls}">
 <td>${p.name}</td>
 <td>${expiry.toLocaleDateString()}</td>
 <td>${diff}</td>
 <td><button onclick="del(${i})">削除</button></td>
-
+</tr>
 `
 
-tbody.appendChild(tr)
+patientList.innerHTML+=row
+
+if(diff<=30){
+
+updateList.innerHTML+=`
+<tr class="${cls}">
+<td>${p.name}</td>
+<td>${expiry.toLocaleDateString()}</td>
+<td>${diff}</td>
+</tr>
+`
+
+}
 
 })
 
@@ -332,6 +373,16 @@ function del(i){
 patients.splice(i,1)
 
 savePatients()
+
+render()
+
+}
+
+
+
+function sortExpiry(){
+
+sortMode=!sortMode
 
 render()
 
@@ -368,7 +419,6 @@ reader.onload=function(){
 let data=JSON.parse(reader.result)
 
 clinic=data.clinic
-
 patients=data.patients
 
 localStorage.setItem("clinic",JSON.stringify(clinic))
@@ -392,13 +442,11 @@ let base=btoa(data)
 
 let url=location.origin+location.pathname+"#"+base
 
-let div=document.getElementById("qrcode")
-
-div.innerHTML=""
+qrcode.innerHTML=""
 
 QRCode.toCanvas(url,function(err,canvas){
 
-div.appendChild(canvas)
+qrcode.appendChild(canvas)
 
 })
 
@@ -408,7 +456,7 @@ div.appendChild(canvas)
 
 function importQR(){
 
-let txt=document.getElementById("qrImport").value
+let txt=qrImport.value
 
 let base=txt.split("#")[1]
 
