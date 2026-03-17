@@ -1,9 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
 <title>同意書管理</title>
+
+<link rel="manifest" href="manifest.json">
+
+<meta name="theme-color" content="#4CAF50">
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
@@ -41,7 +47,6 @@ border-collapse:collapse;
 td,th{
 padding:8px;
 border-bottom:1px solid #ddd;
-text-align:left;
 }
 
 .expired{background:#ffb3b3}
@@ -49,12 +54,8 @@ text-align:left;
 .orange{background:#ffe0b3}
 .yellow{background:#fff6b3}
 
-.sectionTitle{
-font-weight:bold;
-margin-bottom:8px;
-}
-
 </style>
+
 </head>
 
 <body>
@@ -63,7 +64,7 @@ margin-bottom:8px;
 
 <div id="clinicSetup" class="card" style="display:none">
 
-<div class="sectionTitle">施術所登録</div>
+<h3>施術所登録</h3>
 
 <input id="clinicName" placeholder="施術所名">
 <input id="clinicTel" placeholder="電話番号">
@@ -75,12 +76,11 @@ margin-bottom:8px;
 
 </div>
 
-
 <div id="mainApp" style="display:none">
 
 <div class="card">
 
-<div class="sectionTitle">患者登録</div>
+<h3>患者登録</h3>
 
 <input id="name" placeholder="患者名">
 
@@ -110,20 +110,10 @@ margin-bottom:8px;
 
 <div class="card">
 
-<div class="sectionTitle">検索</div>
-
-<input id="search" placeholder="患者名検索" onkeyup="render()">
-
-<button onclick="sortExpiry()">期限順並び替え</button>
-
-</div>
-
-
-<div class="card">
-
-<div class="sectionTitle">更新患者（30日以内）</div>
+<h3>更新患者（30日以内）</h3>
 
 <table>
+
 <thead>
 <tr>
 <th>患者</th>
@@ -131,7 +121,9 @@ margin-bottom:8px;
 <th>残日</th>
 </tr>
 </thead>
+
 <tbody id="updateList"></tbody>
+
 </table>
 
 </div>
@@ -139,19 +131,17 @@ margin-bottom:8px;
 
 <div class="card">
 
-<div class="sectionTitle">患者一覧</div>
+<h3>患者一覧</h3>
 
 <table>
 
 <thead>
-
 <tr>
 <th>患者</th>
 <th>期限</th>
 <th>残日</th>
 <th></th>
 </tr>
-
 </thead>
 
 <tbody id="patientList"></tbody>
@@ -160,40 +150,12 @@ margin-bottom:8px;
 
 </div>
 
-
-<div class="card">
-
-<div class="sectionTitle">バックアップ</div>
-
-<button onclick="exportJSON()">JSON保存</button>
-
-<input type="file" onchange="importJSON(event)">
-
 </div>
-
-
-<div class="card">
-
-<div class="sectionTitle">QR同期</div>
-
-<button onclick="showQR()">QR作成</button>
-
-<div id="qrcode"></div>
-
-<input id="qrImport" placeholder="QRデータ貼付">
-<button onclick="importQR()">同期</button>
-
-</div>
-
-</div>
-
-
 
 <script>
 
 let clinic=null
 let patients=[]
-let sortMode=false
 
 
 function init(){
@@ -221,7 +183,6 @@ render()
 }
 
 
-
 function saveClinic(){
 
 clinic={
@@ -237,7 +198,6 @@ clinicSetup.style.display="none"
 startApp()
 
 }
-
 
 
 function addPatient(){
@@ -258,13 +218,11 @@ render()
 }
 
 
-
 function savePatients(){
 
 localStorage.setItem("patients",JSON.stringify(patients))
 
 }
-
 
 
 function calcExpiry(consent,first,type){
@@ -306,25 +264,12 @@ return new Date(y,m+add+1,0)
 }
 
 
-
 function render(){
-
-let search=search.value.toLowerCase()
-
-let list=[...patients]
-
-if(sortMode){
-
-list.sort((a,b)=>calcExpiry(a.consent,a.first,a.type)-calcExpiry(b.consent,b.first,b.type))
-
-}
 
 patientList.innerHTML=""
 updateList.innerHTML=""
 
-list.forEach((p,i)=>{
-
-if(!p.name.toLowerCase().includes(search))return
+patients.forEach((p,i)=>{
 
 let expiry=calcExpiry(p.consent,p.first,p.type)
 
@@ -367,7 +312,6 @@ updateList.innerHTML+=`
 }
 
 
-
 function del(i){
 
 patients.splice(i,1)
@@ -379,103 +323,14 @@ render()
 }
 
 
-
-function sortExpiry(){
-
-sortMode=!sortMode
-
-render()
-
-}
-
-
-
-function exportJSON(){
-
-let data=JSON.stringify({clinic,patients})
-
-let blob=new Blob([data])
-
-let a=document.createElement("a")
-
-a.href=URL.createObjectURL(blob)
-
-a.download="backup.json"
-
-a.click()
-
-}
-
-
-
-function importJSON(e){
-
-let file=e.target.files[0]
-
-let reader=new FileReader()
-
-reader.onload=function(){
-
-let data=JSON.parse(reader.result)
-
-clinic=data.clinic
-patients=data.patients
-
-localStorage.setItem("clinic",JSON.stringify(clinic))
-localStorage.setItem("patients",JSON.stringify(patients))
-
-location.reload()
-
-}
-
-reader.readAsText(file)
-
-}
-
-
-
-function showQR(){
-
-let data=JSON.stringify({clinic,patients})
-
-let base=btoa(data)
-
-let url=location.origin+location.pathname+"#"+base
-
-qrcode.innerHTML=""
-
-QRCode.toCanvas(url,function(err,canvas){
-
-qrcode.appendChild(canvas)
-
-})
-
-}
-
-
-
-function importQR(){
-
-let txt=qrImport.value
-
-let base=txt.split("#")[1]
-
-let data=JSON.parse(atob(base))
-
-clinic=data.clinic
-patients=data.patients
-
-savePatients()
-
-localStorage.setItem("clinic",JSON.stringify(clinic))
-
-location.reload()
-
-}
-
-
-
 init()
+
+
+if("serviceWorker" in navigator){
+
+navigator.serviceWorker.register("sw.js")
+
+}
 
 </script>
 
