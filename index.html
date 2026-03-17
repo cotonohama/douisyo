@@ -1,32 +1,70 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<title>同意書管理システム (Local Management Edition)</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-    body{font-family:sans-serif;background:#f5f5f5;padding:20px;max-width:1000px;margin:auto;}
-    h1{text-align:center;color:#333;}
-    input,textarea,select,button{width:100%;padding:10px;margin:5px 0 15px 0;font-size:16px;box-sizing:border-box;border-radius:5px;border:1px solid #ccc;}
-    button{background:#4CAF50;color:white;border:none;cursor:pointer;font-weight:bold;transition:0.2s;}
-    button:hover{opacity:0.8;}
-    .card{background:white;padding:15px;border-radius:8px;margin-bottom:20px;box-shadow:0 2px 5px rgba(0,0,0,0.1);}
-    table{width:100%;border-collapse:collapse;margin-top:10px;}
-    th,td{border:1px solid #ddd;padding:10px;font-size:14px;text-align:left;}
-    th{background:#eee;}
-    .expired{background:#ffd6d6;}
-    .warn30{color:#caa400;font-weight:bold;}
-    .warn14{color:#ff8800;font-weight:bold;}
-    .warn7{color:red;font-weight:bold;}
-    .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
-    .day{border:1px solid #ddd;min-height:80px;padding:4px;font-size:11px;background:white;overflow:hidden;}
-    .day b{font-size:14px;}
-    .flex-group{display:flex;gap:10px;flex-wrap: wrap;}
-</style>
+    <meta charset="UTF-8">
+    <title>同意書管理システム (Pro Edition)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body{font-family:sans-serif;background:#f5f5f5;padding:20px;max-width:1000px;margin:auto;}
+        h1{text-align:center;color:#333;margin-bottom:10px;}
+        .version{text-align:center;font-size:12px;color:#888;margin-bottom:20px;}
+        input,textarea,select,button{width:100%;padding:10px;margin:5px 0 15px 0;font-size:16px;box-sizing:border-box;border-radius:5px;border:1px solid #ccc;}
+        button{background:#4CAF50;color:white;border:none;cursor:pointer;font-weight:bold;transition:0.2s;}
+        button:hover{opacity:0.8;}
+        .card{background:white;padding:15px;border-radius:8px;margin-bottom:20px;box-shadow:0 2px 5px rgba(0,0,0,0.1);}
+        table{width:100%;border-collapse:collapse;margin-top:10px;}
+        th,td{border:1px solid #ddd;padding:10px;font-size:14px;text-align:left;}
+        th{background:#eee;}
+        .expired{background:#ffd6d6;}
+        .warn30{color:#caa400;font-weight:bold;}
+        .warn14{color:#ff8800;font-weight:bold;}
+        .warn7{color:red;font-weight:bold;}
+        .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+        .day{border:1px solid #ddd;min-height:80px;padding:4px;font-size:11px;background:white;overflow:hidden;}
+        .day b{font-size:14px;}
+        .flex-group{display:flex;gap:10px;flex-wrap: wrap;}
+        /* 新規追加スタイル */
+        .sync-section { background: #e3f2fd; border: 1px solid #2196f3; }
+        .btn-sync { background: #2196f3; }
+        .btn-json { background: #673ab7; }
+        .btn-csv { background: #607d8b; }
+        .btn-help { background: #f44336; width: auto; padding: 5px 15px; display: inline-block; }
+        details { margin-bottom: 10px; padding: 10px; background: #eee; border-radius: 5px; }
+        summary { cursor: pointer; font-weight: bold; }
+        .guide-box { font-size: 13px; line-height: 1.6; color: #444; }
+    </style>
 </head>
 <body>
 
 <h1>同意書管理システム</h1>
+<div class="version">Cloud Sync & Share Edition</div>
+
+<div class="card sync-section">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin:0;">📦 バックアップ・データ移行</h3>
+        <button class="btn-help" onclick="toggleGuide()">使い方？</button>
+    </div>
+    
+    <div id="guide" class="guide-box" style="display:none; margin-top:10px; border-top:1px solid #ccc; padding-top:10px;">
+        <strong>【PCからスマホへデータを移す方法】</strong><br>
+        1. PCで「データ保存（共有）」を押し、自分のLINEやメールに送信します。<br>
+        2. スマホでそのファイルを受信・保存します。<br>
+        3. スマホでこのソフトを開き、「データ読込」からそのファイルを選択すれば完了！
+    </div>
+
+    <div class="flex-group" style="margin-top:15px;">
+        <button onclick="shareData()" class="btn-json" style="flex:1;">📤 データ保存 (LINE/メール等に送る)</button>
+        <button onclick="document.getElementById('importFile').click()" class="btn-json" style="flex:1;">📥 データ読込 (ファイルから復元)</button>
+        <input type="file" id="importFile" style="display:none" accept=".json" onchange="importData(event)">
+    </div>
+    <button onclick="backupCSV()" class="btn-csv">📊 Excel用CSV書き出し</button>
+
+    <details>
+        <summary>⚙️ 詳細設定（自動同期を使う方）</summary>
+        <p style="font-size:12px;">Googleスプレッドシートと自動同期する場合、URLを入力してください。</p>
+        <input type="text" id="gasUrlInput" placeholder="https://script.google.com/macros/s/..." onchange="saveGasUrl()">
+    </details>
+</div>
 
 <div class="card">
     <div style="display:flex; gap:20px; flex-wrap:wrap;">
@@ -39,15 +77,8 @@
     <h3>検索・フィルター</h3>
     <input id="search" placeholder="患者名やメモで検索...">
     <div class="flex-group">
-        <select id="sort" style="flex:1;">
-            <option value="expiry">期限が近い順</option>
-            <option value="name">名前順</option>
-        </select>
-        <select id="filter" style="flex:1;">
-            <option value="all">すべての患者</option>
-            <option value="this">今月更新のみ</option>
-            <option value="next">来月更新のみ</option>
-        </select>
+        <select id="sort" style="flex:1;"><option value="expiry">期限が近い順</option><option value="name">名前順</option></select>
+        <select id="filter" style="flex:1;"><option value="all">すべての患者</option><option value="this">今月更新のみ</option><option value="next">来月更新のみ</option></select>
     </div>
 </div>
 
@@ -60,61 +91,47 @@
         <div style="flex:1;"><label>初療日（新規のみ）</label><input type="date" id="first"></div>
     </div>
     <label><input type="checkbox" id="deform" style="width:auto; margin-right:8px;">変形徒手矯正（1ヶ月更新）</label>
-    <label>通知準備（期限の何日前に通知するか）</label><input type="number" id="notice" value="7">
-    <label>メモ</label><textarea id="memo" placeholder="備考など"></textarea>
-    
+    <label>通知準備（期限の何日前に通知するか）</label>
+    <input type="number" id="notice" value="7">
+    <label>メモ</label>
+    <textarea id="memo" placeholder="備考など"></textarea>
     <button onclick="save()" style="font-size:1.2em; padding:15px;">保存（ローカル保存）</button>
-    <div class="flex-group">
-        <button onclick="enableNotification()" style="background:#2196F3; flex:1;">通知許可設定</button>
-        <button onclick="backupCSV()" style="background:#607d8b; flex:1;">CSV保存(Excel対応)</button>
-    </div>
+    <button onclick="enableNotification()" style="background:#2196F3;">通知許可設定</button>
 </div>
 
 <div class="card">
     <h3>患者一覧</h3>
-    <div style="overflow-x:auto;">
-        <table>
-            <thead><tr><th>名前</th><th>期限</th><th>残日数</th><th>操作</th></tr></thead>
-            <tbody id="list"></tbody>
-        </table>
-    </div>
+    <div style="overflow-x:auto;"><table><thead><tr><th>名前</th><th>期限</th><th>残日数</th><th>操作</th></tr></thead><tbody id="list"></tbody></table></div>
 </div>
 
 <div class="card">
     <h3 id="calendarTop">更新カレンダー</h3>
-    <h4 id="labelThis">今月</h4>
-    <div id="calendarThis" class="calendar-grid"></div>
-    <h4 id="labelNext">来月</h4>
-    <div id="calendarNext" class="calendar-grid"></div>
+    <h4 id="labelThis">今月</h4><div id="calendarThis" class="calendar-grid"></div>
+    <h4 id="labelNext">来月</h4><div id="calendarNext" class="calendar-grid"></div>
 </div>
 
 <script>
-// --- クラウド同期設定（現在は無効化） ---
-const GAS_URL = null; 
-
+// --- 初期設定 ---
 let patients = JSON.parse(localStorage.getItem("patients") || "[]");
+let GAS_URL = localStorage.getItem("gas_url") || null;
+document.getElementById("gasUrlInput").value = GAS_URL;
 
 const endOfMonth = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
-const addMonths = (date, m) => {
-    let d = new Date(date);
-    d.setMonth(d.getMonth() + m);
-    return d;
-};
+const addMonths = (date, m) => { let d = new Date(date); d.setMonth(d.getMonth() + m); return d; };
 
 // 同意書期限計算ロジック
 function calculateExpiry(consent, first, deform, isEdit) {
     let base = (isEdit || !first) ? new Date(consent) : new Date(first);
     let expiry;
     if (deform) {
-        expiry = new Date(base);
-        expiry.setMonth(expiry.getMonth() + 1);
-        expiry.setDate(expiry.getDate() - 1);
+        expiry = new Date(base); expiry.setMonth(expiry.getMonth() + 1); expiry.setDate(expiry.getDate() - 1);
     } else {
         expiry = (base.getDate() <= 15) ? endOfMonth(addMonths(base, 5)) : endOfMonth(addMonths(base, 6));
     }
     return expiry;
 }
 
+// 保存処理
 async function save() {
     let idx = document.getElementById("editIndex").value;
     let name = document.getElementById("name").value;
@@ -128,31 +145,98 @@ async function save() {
 
     let isEdit = (idx !== "");
     let expiry = calculateExpiry(consent, first, deform, isEdit);
-
     let data = {
         id: isEdit ? patients[idx].id : Date.now(),
         name, consent, first, deform, notice, memo,
         expiry: expiry.toISOString()
     };
 
-    if (!isEdit) { patients.push(data); }
-    else { patients[idx] = data; }
+    if (!isEdit) { patients.push(data); } else { patients[idx] = data; }
 
-    // ブラウザに保存
     localStorage.setItem("patients", JSON.stringify(patients));
+    
+    // GAS送信（URLがある場合のみ）
+    if (GAS_URL) { sendToGAS(data); }
 
-    // GAS送信は無効化中
-    if (GAS_URL) {
-        sendToGAS(data);
-    }
-
-    clearForm();
-    render();
+    clearForm(); render();
     window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+// --- 同期・バックアップ新機能 ---
+
+function toggleGuide() {
+    let g = document.getElementById("guide");
+    g.style.display = g.style.display === "none" ? "block" : "none";
+}
+
+function saveGasUrl() {
+    GAS_URL = document.getElementById("gasUrlInput").value;
+    localStorage.setItem("gas_url", GAS_URL);
+    alert("クラウド設定を保存しました。");
+}
+
+// データ保存機能 (Web Share API)
+async function shareData() {
+    const dataStr = JSON.stringify(patients, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const file = new File([blob], `同意書データ_${new Date().toISOString().split('T')[0]}.json`, { type: 'application/json' });
+
+    if (navigator.share && navigator.canShare({ files: [file] })) {
+        try {
+            await navigator.share({
+                files: [file],
+                title: '同意書管理システム バックアップ',
+                text: 'バックアップデータを送信します。'
+            });
+        } catch (err) {
+            console.error("共有失敗:", err);
+            downloadJSON(dataStr);
+        }
+    } else {
+        // 共有機能がない（PC等）の場合は通常のダウンロード
+        downloadJSON(dataStr);
+    }
+}
+
+function downloadJSON(dataStr) {
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `同意書データ_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+}
+
+// データ読込機能
+function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const imported = JSON.parse(e.target.result);
+            if (confirm(imported.length + " 件のデータを読み込みますか？（現在のデータは上書きされます）")) {
+                patients = imported;
+                localStorage.setItem("patients", JSON.stringify(patients));
+                render();
+                alert("読み込みが完了しました。");
+            }
+        } catch (err) {
+            alert("エラー：正しいJSONファイルではありません。");
+        }
+    };
+    reader.readAsText(file);
+}
+
+// --- 既存機能 ---
+
 function sendToGAS(data) {
-    console.log("クラウド送信がオフのため、データは送信されませんでした。", data);
+    fetch(GAS_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+    }).catch(e => console.error("GAS送信失敗", e));
 }
 
 function clearForm() {
@@ -169,102 +253,62 @@ function clearForm() {
 function render() {
     let tbody = document.getElementById("list");
     tbody.innerHTML = "";
-    let now = new Date();
-    now.setHours(0,0,0,0);
-
-    let thisYear = now.getFullYear();
-    let thisMonth = now.getMonth();
+    let now = new Date(); now.setHours(0,0,0,0);
+    let thisYear = now.getFullYear(); let thisMonth = now.getMonth();
     let nextDate = new Date(thisYear, thisMonth + 1, 1);
-    let nYear = nextDate.getFullYear();
-    let nMonth = nextDate.getMonth();
-
+    let nYear = nextDate.getFullYear(); let nMonth = nextDate.getMonth();
     document.getElementById("labelThis").innerText = `${thisYear}年 ${thisMonth + 1}月`;
     document.getElementById("labelNext").innerText = `${nYear}年 ${nMonth + 1}月`;
 
     let search = document.getElementById("search").value.toLowerCase();
     let sort = document.getElementById("sort").value;
     let filter = document.getElementById("filter").value;
-
     let thisBox = document.getElementById("thisMonthSummary");
     let nextBox = document.getElementById("nextMonthSummary");
     thisBox.innerHTML = ""; nextBox.innerHTML = "";
 
     let list = [...patients].filter(p => (p.name + p.memo).toLowerCase().includes(search));
-
     if (sort === "name") { list.sort((a,b) => a.name.localeCompare(b.name)); }
     else { list.sort((a,b) => new Date(a.expiry) - new Date(b.expiry)); }
 
     list.forEach((p) => {
         let realIdx = patients.indexOf(p);
         let exp = new Date(p.expiry);
-        let expY = exp.getFullYear();
-        let expM = exp.getMonth();
-
+        let expY = exp.getFullYear(); let expM = exp.getMonth();
         if (filter === "this" && (expY !== thisYear || expM !== thisMonth)) return;
         if (filter === "next" && (expY !== nYear || expM !== nMonth)) return;
 
         let diff = Math.ceil((exp - now) / (1000 * 60 * 60 * 24));
         let warn = (diff <= 7) ? "warn7" : (diff <= 14) ? "warn14" : (diff <= 30) ? "warn30" : "";
-        
         let tr = document.createElement("tr");
         if (diff < 0) tr.classList.add("expired");
-
-        tr.innerHTML = `
-            <td><b>${p.name}</b>${p.deform ? '<br><small>(変形)</small>' : ''}</td>
-            <td>${exp.toLocaleDateString()}</td>
-            <td class="${warn}">${diff < 0 ? "期限切れ" : diff + "日"}</td>
-            <td>
-                <div style="display:flex; gap:5px;">
-                    <button onclick="edit(${realIdx})" style="background:#2196f3; padding:5px 10px; margin:0; width:auto;">編集</button>
-                    <button onclick="del(${realIdx})" style="background:#f44336; padding:5px 10px; margin:0; width:auto;">削除</button>
-                    <button onclick="addGoogle(${realIdx})" style="background:#fb8c00; padding:5px 10px; margin:0; width:auto;">Google</button>
-                </div>
-            </td>
-        `;
+        tr.innerHTML = `<td><b>${p.name}</b>${p.deform ? '<br><small>(変形)</small>' : ''}</td><td>${exp.toLocaleDateString()}</td><td class="${warn}">${diff < 0 ? "期限切れ" : diff + "日"}</td><td><div style="display:flex; gap:5px;"><button onclick="edit(${realIdx})" style="background:#2196f3; padding:5px 10px; margin:0; width:auto;">編集</button><button onclick="del(${realIdx})" style="background:#f44336; padding:5px 10px; margin:0; width:auto;">削除</button><button onclick="addGoogle(${realIdx})" style="background:#fb8c00; padding:5px 10px; margin:0; width:auto;">Google</button></div></td>`;
         tbody.appendChild(tr);
 
         let quick = `<div style="color:#2196f3; font-size:14px;">● ${p.name} (${exp.getDate()}日)</div>`;
         if (expY === thisYear && expM === thisMonth) thisBox.innerHTML += quick;
         if (expY === nYear && expM === nMonth) nextBox.innerHTML += quick;
     });
-
     renderCalendar(thisYear, thisMonth, "calendarThis");
     renderCalendar(nYear, nMonth, "calendarNext");
     checkNotification();
 }
 
 function renderCalendar(year, month, target) {
-    let cal = document.getElementById(target);
-    cal.innerHTML = "";
+    let cal = document.getElementById(target); cal.innerHTML = "";
     ["日","月","火","水","木","金","土"].forEach(h => {
-        let d = document.createElement("div");
-        d.style = "text-align:center; font-weight:bold; background:#eee; padding:5px;";
-        d.innerText = h;
-        cal.appendChild(d);
+        let d = document.createElement("div"); d.style = "text-align:center; font-weight:bold; background:#eee; padding:5px;"; d.innerText = h; cal.appendChild(d);
     });
-
     let first = new Date(year, month, 1).getDay();
-    for (let i = 0; i < first; i++) {
-        let e = document.createElement("div");
-        e.className = "day"; e.style.background = "#f9f9f9";
-        cal.appendChild(e);
-    }
-
+    for (let i = 0; i < first; i++) { let e = document.createElement("div"); e.className = "day"; e.style.background = "#f9f9f9"; cal.appendChild(e); }
     let last = new Date(year, month + 1, 0).getDate();
     for (let i = 1; i <= last; i++) {
-        let cell = document.createElement("div");
-        cell.className = "day";
-        cell.innerHTML = `<b>${i}</b><br>`;
+        let cell = document.createElement("div"); cell.className = "day"; cell.innerHTML = `<b>${i}</b><br>`;
         patients.forEach(p => {
             let exp = new Date(p.expiry);
-            if (exp.getFullYear() === year && exp.getMonth() === month && exp.getDate() === i) {
-                cell.innerHTML += `<span style="color:red; font-size:10px;">●${p.name}</span><br>`;
-            }
-            let nDay = new Date(exp);
-            nDay.setDate(nDay.getDate() - p.notice);
-            if (nDay.getFullYear() === year && nDay.getMonth() === month && nDay.getDate() === i) {
-                cell.innerHTML += `<span style="color:orange; font-size:10px;">⚠準備:${p.name}</span><br>`;
-            }
+            if (exp.getFullYear() === year && exp.getMonth() === month && exp.getDate() === i) { cell.innerHTML += `<span style="color:red; font-size:10px;">●${p.name}</span><br>`; }
+            let nDay = new Date(exp); nDay.setDate(nDay.getDate() - p.notice);
+            if (nDay.getFullYear() === year && nDay.getMonth() === month && nDay.getDate() === i) { cell.innerHTML += `<span style="color:orange; font-size:10px;">⚠準備:${p.name}</span><br>`; }
         });
         cal.appendChild(cell);
     }
@@ -283,39 +327,24 @@ function edit(i) {
     document.getElementById("formSection").scrollIntoView({behavior: "smooth"});
 }
 
-function del(i) {
-    if (confirm(patients[i].name + " 様を削除しますか？")) {
-        patients.splice(i, 1);
-        localStorage.setItem("patients", JSON.stringify(patients));
-        render();
-    }
-}
+function del(i) { if (confirm(patients[i].name + " 様を削除しますか？")) { patients.splice(i, 1); localStorage.setItem("patients", JSON.stringify(patients)); render(); } }
 
 function addGoogle(i) {
-    let p = patients[i];
-    let exp = new Date(p.expiry);
+    let p = patients[i]; let exp = new Date(p.expiry);
     let dateStr = exp.toISOString().replace(/-|:|\.\d+/g, "").split("T")[0];
     let title = encodeURIComponent(p.name + "様 同意書更新期限");
     let url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dateStr}/${dateStr}&details=医療マッサージ同意書期限`;
     window.open(url);
 }
 
-function enableNotification() {
-    Notification.requestPermission().then(p => { if(p==="granted") alert("通知ON"); });
-}
+function enableNotification() { Notification.requestPermission().then(p => { if(p==="granted") alert("通知ON"); }); }
 
 function checkNotification() {
-    let today = new Date().toDateString();
     if (!window.notifiedList) window.notifiedList = [];
     patients.forEach(p => {
-        let exp = new Date(p.expiry);
-        let nDay = new Date(exp);
-        nDay.setDate(nDay.getDate() - p.notice);
+        let exp = new Date(p.expiry); let nDay = new Date(exp); nDay.setDate(nDay.getDate() - p.notice);
         if (new Date().toDateString() === nDay.toDateString() && !window.notifiedList.includes(p.id)) {
-            if (Notification.permission === "granted") {
-                new Notification("【同意書準備】", { body: p.name + "様の再同意準備日です" });
-                window.notifiedList.push(p.id);
-            }
+            if (Notification.permission === "granted") { new Notification("【同意書準備】", { body: p.name + "様の再同意準備日です" }); window.notifiedList.push(p.id); }
         }
     });
 }
@@ -327,8 +356,7 @@ function backupCSV() {
         csv += row.join(",") + "\n";
     });
     let blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    let a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
+    let a = document.createElement("a"); a.href = URL.createObjectURL(blob);
     a.download = `同意書バックアップ_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
 }
